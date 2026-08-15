@@ -1095,6 +1095,15 @@
 
 <script>
 // ══════════════════════════════════════════════════════
+// GATE DE SESIÓN — toda la app requiere login primero
+// ══════════════════════════════════════════════════════
+(function requireSession() {
+  if (!localStorage.getItem('qs_token')) {
+    window.location.href = 'login.html';
+  }
+})();
+
+// ══════════════════════════════════════════════════════
 // DATOS DE TIPOS DE AVERÍAS
 // ══════════════════════════════════════════════════════
 const CASOS_POR_TIPO = {
