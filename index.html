@@ -1,0 +1,2189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QUIBIRA SOPORTE</title>
+  <link rel="icon" href="https://raw.githubusercontent.com/qubira/IMAGENES/main/logo2.png" type="image/png">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #1a3a6b;
+      --primary-light: #2456a4;
+      --accent: #00c8ff;
+      --accent-dark: #0099cc;
+      --bg: #0d1b2a;
+      --bg-card: #162032;
+      --bg-card2: #1c2d42;
+      --text: #e8f0fe;
+      --text-muted: #7a9cc6;
+      --border: #243552;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --info: #3b82f6;
+      --purple: #8b5cf6;
+      --sidebar-w: 265px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--bg-card);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      height: 100vh;
+      z-index: 100;
+      transition: transform .3s;
+    }
+    .sidebar-logo {
+      padding: 22px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .sidebar-logo img {
+      width: 46px;
+      height: 46px;
+      object-fit: contain;
+      border-radius: 10px;
+    }
+    .sidebar-logo .brand { font-size: 18px; font-weight: 800; color: var(--accent); letter-spacing: 1.5px; }
+    .sidebar-logo .sub   { font-size: 10px; color: var(--text-muted); letter-spacing: .8px; margin-top: 2px; }
+    .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+    .nav-section {
+      padding: 14px 18px 4px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 20px;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 14px;
+      border-left: 3px solid transparent;
+      transition: all .2s;
+    }
+    .nav-item:hover { background: rgba(0,200,255,.06); color: var(--text); }
+    .nav-item.active { background: rgba(0,200,255,.1); color: var(--accent); border-left-color: var(--accent); }
+    .nav-item .nav-badge {
+      margin-left: auto;
+      min-width: 20px;
+      text-align: center;
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 700;
+      background: var(--danger);
+      color: #fff;
+    }
+    .nav-item .nav-badge.warn { background: var(--warning); }
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .pulse-dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      position: relative;
+    }
+    .pulse-dot::after {
+      content: '';
+      position: absolute;
+      inset: -3px;
+      border-radius: 50%;
+      border: 2px solid var(--success);
+      animation: pulseAnim 1.6s ease-out infinite;
+    }
+    @keyframes pulseAnim { from{opacity:1;transform:scale(1)} to{opacity:0;transform:scale(2.2)} }
+
+    /* ── MAIN ── */
+    .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 0 28px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 14px; }
+    .topbar-left h1 { font-size: 18px; font-weight: 600; }
+    .topbar-left p  { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .hamburger {
+      display: none;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 18px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all .2s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary-light), var(--accent-dark));
+      color: #fff;
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,200,255,.3); }
+    .btn-primary:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-sm { padding: 6px 14px; font-size: 12px; }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-danger  { background: var(--danger);  color: #fff; }
+
+    /* ── CONTENT ── */
+    .content { padding: 28px; flex: 1; }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── STATS GRID ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: transform .2s;
+      cursor: default;
+    }
+    .stat-card:hover { transform: translateY(-2px); }
+    .stat-icon {
+      width: 46px; height: 46px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .stat-info .num   { font-size: 28px; font-weight: 700; line-height: 1; }
+    .stat-info .label { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 22px;
+      margin-bottom: 20px;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .card-title { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+
+    /* ── FORM ── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 18px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+    label { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+    label .req { color: var(--danger); }
+    input, select, textarea {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      width: 100%;
+      transition: border-color .2s, box-shadow .2s;
+      font-family: inherit;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,200,255,.08);
+    }
+    select option { background: var(--bg-card); }
+    textarea { resize: vertical; min-height: 90px; }
+
+    /* ── UPLOAD ── */
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 30px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+      position: relative;
+    }
+    .upload-area:hover, .upload-area.drag-over { border-color: var(--accent); background: rgba(0,200,255,.03); }
+    .upload-area input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .upload-icon { font-size: 30px; color: var(--text-muted); margin-bottom: 8px; }
+    .upload-text { font-size: 14px; color: var(--text-muted); }
+    .upload-text strong { color: var(--accent); }
+    .upload-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; opacity: .7; }
+    .file-preview-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+    .file-thumb {
+      position: relative;
+      width: 80px; height: 80px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .file-thumb img { width: 100%; height: 100%; object-fit: cover; cursor: zoom-in; }
+    .file-thumb .remove-file {
+      position: absolute;
+      top: 3px; right: 3px;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: var(--danger);
+      border: none;
+      color: #fff;
+      font-size: 9px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .file-doc {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      position: relative;
+    }
+    .file-doc .remove-file {
+      background: none;
+      border: none;
+      color: var(--danger);
+      cursor: pointer;
+      margin-left: auto;
+      padding: 2px;
+    }
+
+    /* ── PRIORITY OPTS ── */
+    .priority-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
+    .prio-opt {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      padding: 12px 8px;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      transition: all .2s;
+      opacity: .65;
+    }
+    .prio-opt:hover { opacity: 1; }
+    .prio-opt i { font-size: 16px; }
+    .prio-opt.sel { opacity: 1; }
+    .prio-baja  { color: var(--success); }  .prio-baja.sel  { border-color:var(--success);  background: rgba(16,185,129,.1);  }
+    .prio-media { color: var(--warning); }  .prio-media.sel { border-color:var(--warning);  background: rgba(245,158,11,.1);  }
+    .prio-alta  { color: #f97316; }         .prio-alta.sel  { border-color:#f97316;          background: rgba(249,115,22,.1);  }
+    .prio-critica { color: var(--danger); } .prio-critica.sel { border-color:var(--danger); background: rgba(239,68,68,.1);   }
+
+    /* ── TIPO CARDS ── */
+    .tipo-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
+    .tipo-opt {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 20px 12px;
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      cursor: pointer;
+      text-align: center;
+      transition: all .2s;
+    }
+    .tipo-opt .tipo-emoji { font-size: 30px; }
+    .tipo-opt .tipo-name  { font-size: 13px; font-weight: 600; }
+    .tipo-opt .tipo-sub   { font-size: 11px; color: var(--text-muted); }
+    .tipo-opt:hover { border-color: var(--accent); background: rgba(0,200,255,.03); }
+    .sel-web       { border-color:var(--info)!important;    background:rgba(59,130,246,.08)!important;  color:var(--info); }
+    .sel-movil     { border-color:var(--purple)!important;  background:rgba(139,92,246,.08)!important;  color:var(--purple); }
+    .sel-escritorio{ border-color:var(--success)!important; background:rgba(16,185,129,.08)!important;  color:var(--success); }
+    .sel-proyecto  { border-color:var(--warning)!important; background:rgba(245,158,11,.08)!important;  color:var(--warning); }
+
+    /* ── STEP WIZARD ── */
+    .step-bar { display: flex; margin-bottom: 28px; position: relative; }
+    .step-bar::before {
+      content:''; position:absolute; left:0; right:0; top:18px;
+      height: 2px; background: var(--border); z-index: 0;
+    }
+    .step-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+    .step-item::after {
+      content:''; position:absolute; left:50%; right:-50%; top:18px;
+      height:2px; background:var(--border); z-index:0;
+    }
+    .step-item:last-child::after { display:none; }
+    .step-item.done::after { background: var(--accent); }
+    .step-num {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--bg-card);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700;
+      position: relative; z-index: 1;
+      transition: all .25s;
+    }
+    .step-item.active .step-num { border-color:var(--accent); color:var(--accent); box-shadow:0 0 0 4px rgba(0,200,255,.12); }
+    .step-item.done   .step-num { border-color:var(--accent); background:var(--accent); color:var(--bg); }
+    .step-lbl { font-size:11px; color:var(--text-muted); margin-top:6px; }
+    .step-item.active .step-lbl { color:var(--accent); }
+    .form-step { display: none; animation: fadeIn .3s ease; }
+    .form-step.active { display: block; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ── CASES LIST ── */
+    .filters-bar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    .filters-bar input, .filters-bar select { width: auto; min-width: 150px; }
+    .case-list { display: flex; flex-direction: column; gap: 10px; }
+    .case-card {
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+      cursor: pointer;
+      transition: all .2s;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .case-card:hover { border-color: var(--accent); transform: translateX(3px); }
+    .case-type-icon {
+      width: 42px; height: 42px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .case-body { flex: 1; min-width: 0; }
+    .case-id-row { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+    .case-id-label { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+    .case-title { font-size: 15px; font-weight: 600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom: 4px; }
+    .case-sub { font-size: 13px; color: var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .case-meta { display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0; }
+    .case-date { font-size:11px; color:var(--text-muted); }
+
+    /* ── BADGES ── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 9px; border-radius: 20px;
+      font-size: 11px; font-weight: 600;
+    }
+    .b-pendiente  { background:rgba(245,158,11,.14);  color:var(--warning); }
+    .b-revisado   { background:rgba(59,130,246,.14);  color:var(--info); }
+    .b-solucionado{ background:rgba(16,185,129,.14);  color:var(--success); }
+    .b-cerrado    { background:rgba(107,114,128,.14); color:#9ca3af; }
+    .b-critica    { background:rgba(239,68,68,.14);   color:var(--danger); }
+    .b-alta       { background:rgba(249,115,22,.14);  color:#f97316; }
+    .b-media      { background:rgba(245,158,11,.14);  color:var(--warning); }
+    .b-baja       { background:rgba(16,185,129,.14);  color:var(--success); }
+    .b-web        { background:rgba(59,130,246,.14);  color:var(--info); }
+    .b-movil      { background:rgba(139,92,246,.14);  color:var(--purple); }
+    .b-escritorio { background:rgba(16,185,129,.14);  color:var(--success); }
+    .b-proyecto   { background:rgba(245,158,11,.14);  color:var(--warning); }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.72);
+      z-index: 200;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+      opacity: 0; pointer-events: none;
+      transition: opacity .2s;
+    }
+    .modal-overlay.open { opacity:1; pointer-events:all; }
+    .modal {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 100%; max-width: 780px;
+      max-height: 92vh;
+      overflow-y: auto;
+      transform: scale(.96);
+      transition: transform .2s;
+    }
+    .modal-overlay.open .modal { transform: scale(1); }
+    .modal-header {
+      padding: 22px 26px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: flex-start; justify-content: space-between;
+      position: sticky; top: 0; background: var(--bg-card); z-index:1;
+    }
+    .modal-body { padding: 22px 26px; }
+    .modal-footer {
+      padding: 18px 26px 22px;
+      border-top: 1px solid var(--border);
+      display: flex; gap: 10px; justify-content: flex-end;
+      position: sticky; bottom: 0; background: var(--bg-card); z-index:1;
+    }
+    .close-btn {
+      width: 34px; height: 34px;
+      border-radius: 8px; border: 1px solid var(--border);
+      background: transparent; color: var(--text-muted);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all .2s; flex-shrink:0;
+    }
+    .close-btn:hover { border-color:var(--danger); color:var(--danger); }
+
+    /* ── DETAIL SECTIONS ── */
+    .detail-section { margin-bottom: 22px; }
+    .detail-section h4 {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px;
+      color: var(--text-muted); margin-bottom: 10px;
+      display: flex; align-items: center; gap: 7px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .detail-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(190px,1fr)); gap: 10px; }
+    .detail-item {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 14px;
+    }
+    .detail-item .di-lbl { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+    .detail-item .di-val { font-size: 14px; font-weight: 500; word-break: break-word; }
+    .detail-desc {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px;
+      font-size: 14px; line-height: 1.75; color: var(--text);
+    }
+    .proof-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+    .proof-grid img {
+      max-width: 180px; max-height: 150px;
+      border-radius: 8px; border: 1px solid var(--border);
+      cursor: zoom-in; object-fit: cover;
+    }
+
+    /* ── TIMELINE ── */
+    .timeline { padding-left: 24px; position: relative; }
+    .timeline::before {
+      content:''; position:absolute; left:8px; top:6px; bottom:6px;
+      width:2px; background:var(--border);
+    }
+    .timeline-item { position:relative; margin-bottom:14px; }
+    .timeline-item::before {
+      content:''; position:absolute; left:-20px; top:5px;
+      width:10px; height:10px; border-radius:50%;
+      background:var(--accent); border:2px solid var(--bg-card);
+    }
+    .timeline-item .ti-date { font-size:11px; color:var(--text-muted); }
+    .timeline-item .ti-txt  { font-size:13px; color:var(--text); margin-top:2px; }
+
+    /* ── STATUS PILLS ── */
+    .status-pills { display:flex; gap:8px; flex-wrap:wrap; }
+    .sp {
+      padding: 7px 16px; border-radius: 20px; border: 2px solid transparent;
+      cursor:pointer; font-size:12px; font-weight:600;
+      transition:all .2s; opacity:.55;
+    }
+    .sp:hover { opacity:1; }
+    .sp.sel   { opacity:1; }
+    .sp-pendiente   { border-color:var(--warning);  color:var(--warning);  } .sp-pendiente.sel   { background:rgba(245,158,11,.12); }
+    .sp-revisado    { border-color:var(--info);     color:var(--info);     } .sp-revisado.sel    { background:rgba(59,130,246,.12); }
+    .sp-solucionado { border-color:var(--success);  color:var(--success);  } .sp-solucionado.sel { background:rgba(16,185,129,.12); }
+    .sp-cerrado     { border-color:#9ca3af;          color:#9ca3af;         } .sp-cerrado.sel     { background:rgba(107,114,128,.12); }
+
+    /* ── RESPONSE BOX ── */
+    .response-box {
+      background: rgba(0,200,255,.04);
+      border: 1px solid rgba(0,200,255,.18);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+    .response-box .resp-lbl {
+      font-size:11px; font-weight:700;
+      color:var(--accent); text-transform:uppercase;
+      letter-spacing:.8px; margin-bottom:8px;
+      display:flex; align-items:center; gap:6px;
+    }
+    .response-box p { font-size:14px; line-height:1.7; }
+
+    /* ── CHART BARS ── */
+    .chart-container { display:flex; flex-direction:column; gap:10px; }
+    .chart-row { display:flex; align-items:center; gap:10px; }
+    .chart-row .cr-lbl { width:115px; font-size:12px; color:var(--text-muted); text-align:right; flex-shrink:0; }
+    .chart-row .cr-bar {
+      flex:1; height:10px;
+      background:var(--bg); border-radius:5px; overflow:hidden;
+    }
+    .chart-row .cr-fill { height:100%; border-radius:5px; transition:width .7s ease; }
+    .chart-row .cr-num  { width:28px; font-size:12px; font-weight:700; }
+
+    /* ── EMPTY STATE ── */
+    .empty-state { text-align:center; padding:50px 20px; color:var(--text-muted); }
+    .empty-state i { font-size:44px; opacity:.35; margin-bottom:14px; display:block; }
+    .empty-state h3 { font-size:16px; color:var(--text); margin-bottom:6px; }
+    .empty-state p  { font-size:13px; }
+
+    /* ── TOAST ── */
+    .toast-wrap { position:fixed; bottom:24px; right:24px; z-index:999; display:flex; flex-direction:column; gap:10px; }
+    .toast {
+      background:var(--bg-card2); border:1px solid var(--border);
+      border-radius:10px; padding:13px 16px; min-width:270px;
+      display:flex; align-items:center; gap:12px;
+      box-shadow:0 8px 28px rgba(0,0,0,.35);
+      animation:toastIn .3s ease;
+    }
+    .toast.t-success { border-left:4px solid var(--success); }
+    .toast.t-error   { border-left:4px solid var(--danger); }
+    .toast.t-info    { border-left:4px solid var(--info); }
+    @keyframes toastIn { from{transform:translateX(80px);opacity:0} to{transform:translateX(0);opacity:1} }
+    .toast-title { font-size:13px; font-weight:600; }
+    .toast-msg   { font-size:12px; color:var(--text-muted); margin-top:2px; }
+
+    /* ── IMG ZOOM OVERLAY ── */
+    .zoom-overlay {
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.9);
+      z-index:999; display:none;
+      align-items:center; justify-content:center;
+      cursor:zoom-out;
+    }
+    .zoom-overlay img { max-width:90vw; max-height:90vh; border-radius:8px; }
+
+    /* ── MOB SIDEBAR ── */
+    .mob-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:99; }
+    .mob-overlay.vis { display:block; }
+
+    /* ── SEP ── */
+    .sep { height:1px; background:var(--border); margin:22px 0; }
+
+    /* ── PREVIEW BOX ── */
+    .preview-box {
+      background:var(--bg); border:1px solid var(--border);
+      border-radius:12px; padding:20px;
+    }
+    .preview-meta-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin-top:14px; }
+    .pm-item { background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
+    .pm-lbl  { font-size:11px; color:var(--text-muted); margin-bottom:3px; }
+    .pm-val  { font-size:13px; font-weight:600; }
+
+    /* ── DASHBOARD 2-COL ── */
+    .dash-2col { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:900px) {
+      .dash-2col { grid-template-columns:1fr; }
+    }
+    @media(max-width:768px) {
+      .sidebar { transform:translateX(-100%); }
+      .sidebar.open { transform:translateX(0); }
+      .main { margin-left:0; }
+      .hamburger { display:flex; }
+      .tipo-grid  { grid-template-columns:repeat(2,1fr); }
+      .priority-row { grid-template-columns:repeat(2,1fr); }
+      .stats-grid { grid-template-columns:repeat(2,1fr); }
+    }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width:5px; }
+    ::-webkit-scrollbar-track { background:var(--bg); }
+    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+    ::-webkit-scrollbar-thumb:hover { background:var(--text-muted); }
+
+    /* ── REPORT PAGE GRID ── */
+    .report-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+    @media(max-width:768px){ .report-grid{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <img src="https://raw.githubusercontent.com/qubira/IMAGENES/main/logo2.png" alt="Quibira" onerror="this.style.display='none'">
+    <div>
+      <div class="brand">QUIBIRA</div>
+      <div class="sub">SOPORTE TÉCNICO</div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">Principal</div>
+    <div class="nav-item active" onclick="navigate('dashboard')">
+      <i class="fas fa-chart-line fa-fw"></i> Dashboard
+    </div>
+    <div class="nav-item" onclick="navigate('nuevo')">
+      <i class="fas fa-plus-circle fa-fw"></i> Nuevo Caso
+    </div>
+    <div class="nav-section">Gestión</div>
+    <div class="nav-item" onclick="navigate('casos','')">
+      <i class="fas fa-ticket-alt fa-fw"></i> Todos los Casos
+      <span class="nav-badge" id="nb-total">0</span>
+    </div>
+    <div class="nav-item" onclick="navigate('casos','pendiente')">
+      <i class="fas fa-clock fa-fw"></i> Pendientes
+      <span class="nav-badge warn" id="nb-pendiente">0</span>
+    </div>
+    <div class="nav-item" onclick="navigate('casos','revisado')">
+      <i class="fas fa-eye fa-fw"></i> En Revisión
+    </div>
+    <div class="nav-item" onclick="navigate('casos','solucionado')">
+      <i class="fas fa-check-circle fa-fw"></i> Solucionados
+    </div>
+    <div class="nav-item" onclick="navigate('casos','cerrado')">
+      <i class="fas fa-archive fa-fw"></i> Cerrados
+    </div>
+    <div class="nav-section">Reportes</div>
+    <div class="nav-item" onclick="navigate('reportes')">
+      <i class="fas fa-chart-bar fa-fw"></i> Estadísticas
+    </div>
+    <div class="nav-section">Administración</div>
+    <div class="nav-item" onclick="openTrabajadores()">
+      <i class="fas fa-users-cog fa-fw"></i> Trabajadores
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+      <span class="pulse-dot"></span> Sistema activo
+    </div>
+    <div style="font-size:10px;opacity:.5;margin-top:2px">© 2025 Quibira S.A.C.</div>
+  </div>
+</aside>
+<div class="mob-overlay" id="mob-overlay" onclick="closeSidebar()"></div>
+
+<!-- MAIN -->
+<main class="main">
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+      <div>
+        <h1 id="page-title">Dashboard</h1>
+        <p id="page-sub">Resumen general del sistema de soporte</p>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-primary" onclick="navigate('nuevo')">
+        <i class="fas fa-plus"></i> Reportar Caso
+      </button>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <!-- ═══════════════ DASHBOARD ═══════════════ -->
+    <div class="page active" id="page-dashboard">
+      <div class="stats-grid" id="stats-grid"></div>
+      <div class="dash-2col">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-stream" style="color:var(--accent)"></i> Casos Recientes</h3>
+            <button class="btn btn-outline btn-sm" onclick="navigate('casos','')">Ver todos</button>
+          </div>
+          <div id="recent-cases"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="fas fa-layer-group" style="color:var(--accent)"></i> Por Tipo de App</h3></div>
+          <div id="dash-chart-tipo" class="chart-container"></div>
+        </div>
+      </div>
+      <div class="dash-2col" style="margin-top:0">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="fas fa-fire" style="color:var(--danger)"></i> Por Prioridad</h3></div>
+          <div id="dash-chart-prio" class="chart-container"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="fas fa-tasks" style="color:var(--success)"></i> Por Estado</h3></div>
+          <div id="dash-chart-estado" class="chart-container"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ NUEVO CASO ═══════════════ -->
+    <div class="page" id="page-nuevo">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title"><i class="fas fa-bug" style="color:var(--accent)"></i> Reportar Nuevo Caso</h3>
+        </div>
+
+        <!-- STEP BAR -->
+        <div class="step-bar" id="step-bar">
+          <div class="step-item active" data-s="1"><div class="step-num">1</div><div class="step-lbl">Tipo</div></div>
+          <div class="step-item" data-s="2"><div class="step-num">2</div><div class="step-lbl">Detalles</div></div>
+          <div class="step-item" data-s="3"><div class="step-num">3</div><div class="step-lbl">Evidencia</div></div>
+          <div class="step-item" data-s="4"><div class="step-num">4</div><div class="step-lbl">Confirmar</div></div>
+        </div>
+
+        <!-- STEP 1 -->
+        <div class="form-step active" id="fs1">
+          <p style="font-size:14px;color:var(--text-muted);margin-bottom:18px">¿Sobre qué plataforma es el reporte de avería?</p>
+          <div class="tipo-grid">
+            <div class="tipo-opt" id="to-web" onclick="pickTipo('web')">
+              <span class="tipo-emoji">🌐</span>
+              <span class="tipo-name">Aplicación Web</span>
+              <span class="tipo-sub">Sitios y apps en navegador</span>
+            </div>
+            <div class="tipo-opt" id="to-movil" onclick="pickTipo('movil')">
+              <span class="tipo-emoji">📱</span>
+              <span class="tipo-name">Aplicación Móvil</span>
+              <span class="tipo-sub">Android & iOS</span>
+            </div>
+            <div class="tipo-opt" id="to-escritorio" onclick="pickTipo('escritorio')">
+              <span class="tipo-emoji">💻</span>
+              <span class="tipo-name">Escritorio</span>
+              <span class="tipo-sub">Windows · macOS · Linux</span>
+            </div>
+            <div class="tipo-opt" id="to-proyecto" onclick="pickTipo('proyecto')">
+              <span class="tipo-emoji">🏢</span>
+              <span class="tipo-name">Proyecto Grande</span>
+              <span class="tipo-sub">Infraestructura & Sistemas</span>
+            </div>
+          </div>
+          <div style="text-align:right;margin-top:22px">
+            <button class="btn btn-primary" id="btn-s1" onclick="goStep(2)" disabled>
+              Continuar <i class="fas fa-arrow-right"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- STEP 2 -->
+        <div class="form-step" id="fs2">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Tipo de Avería <span class="req">*</span></label>
+              <select id="f-tipo-caso" onchange="chkStep2()">
+                <option value="">— Seleccione —</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Nombre del Proyecto / Sistema <span class="req">*</span></label>
+              <input id="f-proyecto" type="text" placeholder="Ej: Portal Clientes v2.0" oninput="chkStep2()">
+            </div>
+            <div class="form-group">
+              <label>Reportado Por <span class="req">*</span></label>
+              <input id="f-nombre" type="text" placeholder="Tu nombre completo" oninput="chkStep2()">
+            </div>
+            <div class="form-group">
+              <label>Correo de Contacto <span class="req">*</span></label>
+              <input id="f-correo" type="email" placeholder="correo@empresa.com" oninput="chkStep2()">
+            </div>
+            <div class="form-group">
+              <label>Área / Departamento</label>
+              <input id="f-area" type="text" placeholder="Ej: Desarrollo, Contabilidad...">
+            </div>
+            <div class="form-group">
+              <label>Versión / Build</label>
+              <input id="f-version" type="text" placeholder="Ej: 1.4.2 · Build #300">
+            </div>
+            <div class="form-group full">
+              <label>Título del Caso <span class="req">*</span></label>
+              <input id="f-titulo" type="text" placeholder="Resumen breve del problema..." oninput="chkStep2()">
+            </div>
+            <div class="form-group full">
+              <label>Descripción Detallada <span class="req">*</span></label>
+              <textarea id="f-desc" rows="5" placeholder="Describe el problema: ¿Cuándo ocurrió? ¿Con qué frecuencia? ¿Pasos para reproducir?" oninput="chkStep2()"></textarea>
+            </div>
+            <div class="form-group full">
+              <label>Pasos para Reproducir</label>
+              <textarea id="f-pasos" rows="3" placeholder="1. Abrir la app&#10;2. Ir a sección X&#10;3. Hacer clic en Y..."></textarea>
+            </div>
+            <div class="form-group">
+              <label>Impacto en Usuarios</label>
+              <select id="f-impacto">
+                <option value="">— Seleccione —</option>
+                <option value="ninguno">Sin impacto visible</option>
+                <option value="bajo">Pocos usuarios afectados</option>
+                <option value="medio">Grupo significativo</option>
+                <option value="alto">Mayoría de usuarios</option>
+                <option value="total">Todos / Sistema caído</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Entorno Afectado</label>
+              <select id="f-entorno">
+                <option value="">— Seleccione —</option>
+                <option value="desarrollo">Desarrollo</option>
+                <option value="testing">Testing / QA</option>
+                <option value="staging">Staging / Pre-prod</option>
+                <option value="produccion">Producción</option>
+              </select>
+            </div>
+          </div>
+          <div class="sep"></div>
+          <label style="display:block;margin-bottom:12px">Nivel de Prioridad <span class="req">*</span></label>
+          <div class="priority-row">
+            <div class="prio-opt prio-baja"    id="po-baja"    onclick="pickPrio('baja')">   <i class="fas fa-arrow-down"></i>  Baja</div>
+            <div class="prio-opt prio-media"   id="po-media"   onclick="pickPrio('media')">  <i class="fas fa-minus"></i>       Media</div>
+            <div class="prio-opt prio-alta"    id="po-alta"    onclick="pickPrio('alta')">   <i class="fas fa-arrow-up"></i>    Alta</div>
+            <div class="prio-opt prio-critica" id="po-critica" onclick="pickPrio('critica')"><i class="fas fa-fire"></i>         Crítica</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:22px">
+            <button class="btn btn-outline" onclick="goStep(1)"><i class="fas fa-arrow-left"></i> Atrás</button>
+            <button class="btn btn-primary" id="btn-s2" onclick="goStep(3)" disabled>Continuar <i class="fas fa-arrow-right"></i></button>
+          </div>
+        </div>
+
+        <!-- STEP 3 -->
+        <div class="form-step" id="fs3">
+          <p style="font-size:14px;color:var(--text-muted);margin-bottom:18px">Adjunta capturas de pantalla, videos o documentos que evidencien el problema (opcional).</p>
+          <div class="upload-area" id="upload-zone"
+               ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+            <input type="file" id="file-inp" multiple accept="image/*,video/*,.pdf,.doc,.docx" onchange="onFilesPicked(this.files)">
+            <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+            <div class="upload-text"><strong>Arrastra archivos aquí</strong> o haz clic para seleccionar</div>
+            <div class="upload-hint">PNG · JPG · GIF · MP4 · PDF · DOC — Máximo 10 archivos</div>
+          </div>
+          <div class="file-preview-grid" id="file-preview"></div>
+          <div class="sep"></div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>URL de Evidencia Externa</label>
+              <input id="f-url" type="url" placeholder="https://drive.google.com/ o https://loom.com/...">
+            </div>
+            <div class="form-group">
+              <label>Notas Adicionales</label>
+              <input id="f-notas" type="text" placeholder="Información extra para el equipo técnico...">
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:22px">
+            <button class="btn btn-outline" onclick="goStep(2)"><i class="fas fa-arrow-left"></i> Atrás</button>
+            <button class="btn btn-primary" onclick="goStep(4)">Revisar <i class="fas fa-arrow-right"></i></button>
+          </div>
+        </div>
+
+        <!-- STEP 4 -->
+        <div class="form-step" id="fs4">
+          <p style="font-size:14px;color:var(--text-muted);margin-bottom:18px">Revisa la información antes de enviar el reporte.</p>
+          <div id="preview-box"></div>
+          <div style="display:flex;justify-content:space-between;margin-top:22px">
+            <button class="btn btn-outline" onclick="goStep(3)"><i class="fas fa-arrow-left"></i> Atrás</button>
+            <button class="btn btn-primary" onclick="submitCase()"><i class="fas fa-paper-plane"></i> Enviar Reporte</button>
+          </div>
+        </div>
+
+      </div><!-- /card -->
+    </div>
+
+    <!-- ═══════════════ CASOS ═══════════════ -->
+    <div class="page" id="page-casos">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title"><i class="fas fa-list" style="color:var(--accent)"></i> Gestión de Casos</h3>
+          <span id="cases-count" style="font-size:13px;color:var(--text-muted)">0 casos</span>
+        </div>
+        <div class="filters-bar">
+          <input type="text" id="s-search" placeholder="🔍  Buscar por título, ID, proyecto..." oninput="renderCases()" style="min-width:240px">
+          <select id="s-tipo" onchange="renderCases()">
+            <option value="">Todos los tipos</option>
+            <option value="web">🌐 Web</option>
+            <option value="movil">📱 Móvil</option>
+            <option value="escritorio">💻 Escritorio</option>
+            <option value="proyecto">🏢 Proyecto</option>
+          </select>
+          <select id="s-estado" onchange="renderCases()">
+            <option value="">Todos los estados</option>
+            <option value="pendiente">⏳ Pendiente</option>
+            <option value="revisado">👁️ Revisado</option>
+            <option value="solucionado">✅ Solucionado</option>
+            <option value="cerrado">🗃️ Cerrado</option>
+          </select>
+          <select id="s-prio" onchange="renderCases()">
+            <option value="">Todas las prioridades</option>
+            <option value="critica">🔴 Crítica</option>
+            <option value="alta">🟠 Alta</option>
+            <option value="media">🟡 Media</option>
+            <option value="baja">🟢 Baja</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="clearFilters()"><i class="fas fa-times"></i> Limpiar</button>
+        </div>
+        <div class="case-list" id="case-list"></div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ REPORTES ═══════════════ -->
+    <div class="page" id="page-reportes">
+      <div class="report-grid">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">📊 Casos por Tipo</h3></div>
+          <div id="r-tipo"   class="chart-container"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">📈 Casos por Estado</h3></div>
+          <div id="r-estado" class="chart-container"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">🎯 Casos por Prioridad</h3></div>
+          <div id="r-prio"   class="chart-container"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">📅 Actividad (últimos 7 días)</h3></div>
+          <div id="r-act"    class="chart-container"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ TRABAJADORES ═══════════════ -->
+    <div class="page" id="page-trabajadores">
+
+      <!-- Barra de sesión: quién entró + cerrar sesión -->
+      <div id="tw-session-bar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;padding:10px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;font-size:13px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:8px;color:var(--text-muted)">
+          <i class="fas fa-user-circle" style="color:var(--accent);font-size:16px"></i>
+          Sesión activa: <strong id="tw-session-name" style="color:var(--text)">—</strong>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="logoutTrabajadores()"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button>
+      </div>
+
+      <!-- Gate de contraseña maestra -->
+      <div class="card" id="tw-gate">
+        <div style="text-align:center;padding:30px 10px;max-width:360px;margin:0 auto">
+          <div style="font-size:38px;margin-bottom:10px"><i class="fas fa-user-shield" style="color:var(--accent)"></i></div>
+          <h3 style="margin-bottom:6px">Acceso restringido</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px">
+            Ingresa la contraseña maestra para ver las cuentas de los trabajadores.
+            Solo vas a poder editar la contraseña de cada cuenta.
+          </p>
+          <div class="form-group" style="text-align:left">
+            <label>Contraseña maestra</label>
+            <input type="password" id="tw-master-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')verifyMasterPassword()">
+          </div>
+          <div id="tw-gate-error" style="color:var(--danger);font-size:12px;margin-top:8px;display:none"></div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:16px" onclick="verifyMasterPassword()" id="tw-gate-btn">
+            <i class="fas fa-unlock"></i> Desbloquear
+          </button>
+        </div>
+      </div>
+
+      <!-- Lista de trabajadores (oculta hasta desbloquear) -->
+      <div id="tw-content" style="display:none">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-users-cog" style="color:var(--accent)"></i> Cuentas de trabajadores</h3>
+            <button class="btn btn-outline btn-sm" onclick="lockTrabajadores()"><i class="fas fa-lock"></i> Bloquear</button>
+          </div>
+          <div class="filters-bar">
+            <input type="text" id="tw-search" placeholder="🔍  Buscar por nombre, correo o usuario..." oninput="renderTrabajadores()" style="min-width:320px">
+          </div>
+          <div class="case-list" id="tw-list-body"></div>
+          <div id="tw-empty" style="display:none;text-align:center;padding:30px;color:var(--text-muted)">
+            No se encontraron trabajadores.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</main>
+
+<!-- ═══════════════ MODAL DETALLE ═══════════════ -->
+<div class="modal-overlay" id="case-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div id="m-id"    style="font-size:11px;color:var(--text-muted);margin-bottom:4px"></div>
+        <div id="m-title" style="font-size:18px;font-weight:700"></div>
+      </div>
+      <button class="close-btn" onclick="closeModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body" id="m-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cerrar</button>
+      <button class="btn btn-primary" onclick="saveModal()"><i class="fas fa-save"></i> Guardar Cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL CAMBIAR CONTRASEÑA ═══════════════ -->
+<div class="modal-overlay" id="pwd-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Cambiando contraseña de</div>
+        <div id="pwd-target-name" style="font-size:16px;font-weight:700">—</div>
+      </div>
+      <button class="close-btn" onclick="closePwdModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group" style="margin-bottom:14px">
+        <label>Nueva contraseña</label>
+        <input type="password" id="pwd-new" placeholder="Mínimo 8 caracteres">
+      </div>
+      <div class="form-group">
+        <label>Confirmar nueva contraseña</label>
+        <input type="password" id="pwd-confirm" placeholder="Repite la contraseña">
+      </div>
+      <div id="pwd-error" style="color:var(--danger);font-size:12px;margin-top:10px;display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closePwdModal()">Cancelar</button>
+      <button class="btn btn-primary" id="pwd-save-btn" onclick="savePassword()"><i class="fas fa-key"></i> Cambiar contraseña</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMAGE ZOOM -->
+<div class="zoom-overlay" id="zoom-ov" onclick="this.style.display='none'">
+  <img id="zoom-img" src="" alt="">
+</div>
+
+<!-- TOASTS -->
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// DATOS DE TIPOS DE AVERÍAS
+// ══════════════════════════════════════════════════════
+const CASOS_POR_TIPO = {
+  movil: [
+    "Cierres inesperados (Crashes)",
+    "Incompatibilidad de SO (Android/iOS)",
+    "Fragmentación de pantalla (marcas/modelos)",
+    "Consumo excesivo de batería",
+    "Fugas de memoria (RAM)",
+    "Pérdida de paquetes de red (Wi-Fi → Datos)",
+    "Sincronización offline fallida",
+    "Bloqueo de hilos (UI Thread congelado)",
+    "Uso excesivo de almacenamiento interno",
+    "Rechazo en tiendas (Google Play / App Store)",
+    "Fallo de notificaciones Push",
+    "Permisos denegados (Cámara / GPS)",
+    "Sobrecalentamiento del dispositivo",
+    "Actualizaciones obligatorias (versiones antiguas)",
+    "Geolocalización imprecisa",
+    "Librerías obsoletas (sin soporte)",
+    "Carga diferida lenta (Lazy Load / scroll)",
+    "Inyección de código (SQLite/Room)",
+    "Fallos Bluetooth / Hardware externo",
+    "Autenticación biométrica fallida"
+  ],
+  web: [
+    "Latencia del servidor (respuestas lentas HTTP)",
+    "Incompatibilidad entre navegadores (Safari/Edge)",
+    "Inyección SQL",
+    "Cross-Site Scripting (XSS)",
+    "Enlaces rotos (Error 404)",
+    "Imágenes no optimizadas (carga lenta)",
+    "Certificados SSL vencidos",
+    "Expiración de sesiones (cookies mal gestionadas)",
+    "Diseño no responsivo (pantallas pequeñas)",
+    "Renderizado bloqueado (JS al inicio de página)",
+    "Ataques DDoS (colapso por tráfico masivo)",
+    "Fugas de CORS (intercambio de recursos)",
+    "Mala indexación SEO (etiquetas meta)",
+    "Pérdida de estado al recargar (F5)",
+    "Exceso de redirecciones (bucle infinito)",
+    "Contenido mixto (HTTP dentro de HTTPS)",
+    "Consumo de API (Rate Limit superado)",
+    "Caché agresiva (usuarios ven versión vieja)",
+    "Formularios rotos (validación fallida)",
+    "Fuentes no cargadas (texto parpadea)"
+  ],
+  escritorio: [
+    "Falta de DLLs / Librerías del sistema",
+    "Conflictos de Registro (Windows)",
+    "Permisos de Administrador bloqueados",
+    "Instaladores corruptos",
+    "Fugas de RAM (consumo continuo)",
+    "Bloqueo por Antivirus (falsos positivos)",
+    "Incompatibilidad de Drivers (GPU)",
+    "Notarización fallida (macOS)",
+    "Arquitectura incorrecta (32/64 bits)",
+    "Parches fallidos (archivos corruptos)",
+    "Cierre inesperado tras hibernación",
+    "Consumo de CPU al 100%",
+    "Resolución de pantalla (4K / HiDPI)",
+    "Bloqueo de archivos (dos instancias)",
+    "Errores con multi-monitores",
+    "Configuración regional (fechas / decimales)",
+    "Hardware obsoleto (instrucciones nuevas)",
+    "Desinstalación incompleta (archivos residuales)",
+    "Hilos muertos (Deadlocks internos)",
+    "Pérdida de enfoque (atajos de teclado)"
+  ],
+  proyecto: [
+    "Cuellos de botella en base de datos",
+    "Monolito acoplado (cambios en cascada)",
+    "Inconsistencia de datos entre BD",
+    "Latencia de red entre microservicios",
+    "Deuda técnica acumulada",
+    "Orquestación fallida (Docker / Kubernetes)",
+    "Migraciones de BD fallidas (millones de filas)",
+    "Saturación de logs (discos llenos)",
+    "Falta de pruebas automatizadas (CI/CD roto)",
+    "Desalineación de APIs (versiones incompatibles)",
+    "Fugas de conexiones a BD (nunca se cierran)",
+    "Límites de hardware / nube alcanzados",
+    "Gestión de secretos (claves filtradas en repo)",
+    "Procesos zombie (tareas colgadas en clúster)",
+    "Indexación deficiente (consultas lentas)",
+    "Sincronización de relojes entre servidores",
+    "Fallo de balanceadores de carga",
+    "Dependencias anidadas rotas",
+    "Cola de mensajería (RabbitMQ / Kafka)",
+    "Monitoreo ciego (sin alertas configuradas)"
+  ]
+};
+
+const TIPO_META = {
+  web:        { emoji:'🌐', color:'var(--info)',    bg:'rgba(59,130,246,.12)',   icon:'fa-globe',           label:'Web'        },
+  movil:      { emoji:'📱', color:'var(--purple)',  bg:'rgba(139,92,246,.12)',   icon:'fa-mobile-alt',      label:'Móvil'      },
+  escritorio: { emoji:'💻', color:'var(--success)', bg:'rgba(16,185,129,.12)',   icon:'fa-desktop',         label:'Escritorio' },
+  proyecto:   { emoji:'🏢', color:'var(--warning)', bg:'rgba(245,158,11,.12)',   icon:'fa-project-diagram', label:'Proyecto'   }
+};
+
+const ESTADO_META = {
+  pendiente:   { icon:'fa-clock',        color:'var(--warning)', label:'Pendiente'   },
+  revisado:    { icon:'fa-eye',          color:'var(--info)',    label:'En Revisión' },
+  solucionado: { icon:'fa-check-circle', color:'var(--success)', label:'Solucionado' },
+  cerrado:     { icon:'fa-archive',      color:'#9ca3af',        label:'Cerrado'     }
+};
+
+const PRIO_COLOR = {
+  baja:'var(--success)', media:'var(--warning)', alta:'#f97316', critica:'var(--danger)'
+};
+
+// ══════════════════════════════════════════════════════
+// ESTADO GLOBAL
+// ══════════════════════════════════════════════════════
+let cases       = JSON.parse(localStorage.getItem('qb_cases') || '[]');
+let selTipo     = null;
+let selPrio     = null;
+let uploadedFiles = [];
+let activeCaseId  = null;
+let activeFilter  = '';
+
+function save() { localStorage.setItem('qb_cases', JSON.stringify(cases)); }
+
+function genId() {
+  return 'QS-' + String(cases.length + 1).padStart(4, '0');
+}
+
+function fmtDate(iso) {
+  return new Date(iso).toLocaleString('es-PE', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+function fmtShort(iso) {
+  return new Date(iso).toLocaleString('es-PE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+}
+
+// ══════════════════════════════════════════════════════
+// NAVEGACIÓN
+// ══════════════════════════════════════════════════════
+const PAGE_META = {
+  dashboard:    { title:'Dashboard',          sub:'Resumen general del sistema de soporte' },
+  nuevo:        { title:'Nuevo Caso',         sub:'Registra un nuevo reporte de avería'    },
+  casos:        { title:'Gestión de Casos',   sub:'Visualiza y administra todos los reportes' },
+  reportes:     { title:'Estadísticas',       sub:'Análisis y métricas del sistema de soporte' },
+  trabajadores: { title:'Trabajadores',       sub:'Consulta las cuentas del equipo y restablece contraseñas' }
+};
+
+function navigate(page, filter) {
+  if (filter !== undefined) activeFilter = filter;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.getElementById('page-title').textContent = PAGE_META[page]?.title || page;
+  document.getElementById('page-sub').textContent   = PAGE_META[page]?.sub   || '';
+  if (page === 'dashboard') renderDashboard();
+  if (page === 'casos')     { syncFiltersFromNav(); renderCases(); }
+  if (page === 'nuevo')     resetForm();
+  if (page === 'reportes')  renderReportes();
+  closeSidebar();
+}
+
+function syncFiltersFromNav() {
+  document.getElementById('s-estado').value = activeFilter;
+}
+
+// ══════════════════════════════════════════════════════
+// FORM — PASO 1
+// ══════════════════════════════════════════════════════
+function pickTipo(t) {
+  selTipo = t;
+  ['web','movil','escritorio','proyecto'].forEach(x => {
+    document.getElementById('to-' + x).className = 'tipo-opt';
+  });
+  document.getElementById('to-' + t).classList.add('sel-' + t);
+  document.getElementById('btn-s1').disabled = false;
+}
+
+// ══════════════════════════════════════════════════════
+// FORM — PASO 2
+// ══════════════════════════════════════════════════════
+function fillTipoCasoSelect() {
+  const sel = document.getElementById('f-tipo-caso');
+  sel.innerHTML = '<option value="">— Seleccione el tipo de avería —</option>';
+  (CASOS_POR_TIPO[selTipo] || []).forEach(tc => {
+    const o = document.createElement('option');
+    o.value = tc; o.textContent = tc;
+    sel.appendChild(o);
+  });
+}
+
+function pickPrio(p) {
+  selPrio = p;
+  ['baja','media','alta','critica'].forEach(x =>
+    document.getElementById('po-' + x).classList.remove('sel')
+  );
+  document.getElementById('po-' + p).classList.add('sel');
+  chkStep2();
+}
+
+function chkStep2() {
+  const ok = selPrio &&
+    gv('f-tipo-caso') && gv('f-proyecto') &&
+    gv('f-nombre')    && gv('f-correo')   &&
+    gv('f-titulo')    && gv('f-desc');
+  document.getElementById('btn-s2').disabled = !ok;
+}
+
+// ══════════════════════════════════════════════════════
+// STEP NAVIGATION
+// ══════════════════════════════════════════════════════
+function goStep(n) {
+  document.querySelectorAll('.form-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('fs' + n).classList.add('active');
+
+  document.querySelectorAll('#step-bar .step-item').forEach((el, i) => {
+    el.classList.remove('active','done');
+    if (i + 1 < n)  el.classList.add('done');
+    if (i + 1 === n) el.classList.add('active');
+  });
+
+  if (n === 2) fillTipoCasoSelect();
+  if (n === 4) buildPreview();
+}
+
+// ══════════════════════════════════════════════════════
+// STEP 3 — UPLOAD
+// ══════════════════════════════════════════════════════
+function onDragOver(e) { e.preventDefault(); document.getElementById('upload-zone').classList.add('drag-over'); }
+function onDragLeave()  { document.getElementById('upload-zone').classList.remove('drag-over'); }
+function onDrop(e)      { e.preventDefault(); onDragLeave(); onFilesPicked(e.dataTransfer.files); }
+
+function onFilesPicked(files) {
+  Array.from(files).slice(0, 10 - uploadedFiles.length).forEach(f => {
+    const r = new FileReader();
+    r.onload = e => {
+      uploadedFiles.push({ name: f.name, type: f.type, data: e.target.result });
+      renderFilePreviews();
+    };
+    r.readAsDataURL(f);
+  });
+}
+
+function renderFilePreviews() {
+  const c = document.getElementById('file-preview');
+  c.innerHTML = uploadedFiles.map((f, i) => {
+    if (f.type.startsWith('image/')) {
+      return `<div class="file-thumb">
+        <img src="${f.data}" onclick="zoomImg('${f.data}')">
+        <button class="remove-file" onclick="removeFile(${i})"><i class="fas fa-times"></i></button>
+      </div>`;
+    }
+    return `<div class="file-doc">
+      <i class="fas fa-file" style="color:var(--text-muted)"></i>
+      <span style="font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</span>
+      <button class="remove-file" onclick="removeFile(${i})"><i class="fas fa-times"></i></button>
+    </div>`;
+  }).join('');
+}
+
+function removeFile(i) { uploadedFiles.splice(i, 1); renderFilePreviews(); }
+
+// ══════════════════════════════════════════════════════
+// STEP 4 — PREVIEW
+// ══════════════════════════════════════════════════════
+function buildPreview() {
+  const t  = TIPO_META[selTipo];
+  const im = { ninguno:'Sin impacto', bajo:'Pocos usuarios', medio:'Grupo significativo', alto:'Mayoría de usuarios', total:'Sistema caído' };
+  const en = { desarrollo:'Desarrollo', testing:'Testing / QA', staging:'Staging', produccion:'Producción' };
+
+  document.getElementById('preview-box').innerHTML = `
+    <div class="preview-box">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+        <div style="width:48px;height:48px;border-radius:12px;background:${t.bg};display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">${t.emoji}</div>
+        <div>
+          <div style="font-size:11px;color:var(--text-muted)">Nuevo reporte · ${t.label}</div>
+          <div style="font-size:18px;font-weight:700">${gv('f-titulo')}</div>
+        </div>
+        <span class="badge b-${selPrio}" style="margin-left:auto">${selPrio.toUpperCase()}</span>
+      </div>
+      <div class="preview-meta-grid">
+        ${pmi('Tipo de Avería', gv('f-tipo-caso'))}
+        ${pmi('Proyecto', gv('f-proyecto'))}
+        ${pmi('Reportado Por', gv('f-nombre'))}
+        ${pmi('Correo', gv('f-correo'))}
+        ${pmi('Entorno', en[gv('f-entorno')] || '—')}
+        ${pmi('Impacto', im[gv('f-impacto')] || '—')}
+      </div>
+      <div style="margin-top:14px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">DESCRIPCIÓN</div>
+        <div style="font-size:13px;line-height:1.7">${gv('f-desc').replace(/\n/g,'<br>')}</div>
+      </div>
+      ${uploadedFiles.length ? `<div style="margin-top:12px;font-size:12px;color:var(--text-muted)"><i class="fas fa-paperclip"></i> ${uploadedFiles.length} archivo(s) adjunto(s)</div>` : ''}
+    </div>
+  `;
+}
+
+function pmi(l, v) {
+  return `<div class="pm-item"><div class="pm-lbl">${l}</div><div class="pm-val">${v || '—'}</div></div>`;
+}
+
+// ══════════════════════════════════════════════════════
+// SUBMIT
+// ══════════════════════════════════════════════════════
+function submitCase() {
+  const nc = {
+    id:           genId(),
+    tipo:         selTipo,
+    tipoCaso:     gv('f-tipo-caso'),
+    proyecto:     gv('f-proyecto'),
+    titulo:       gv('f-titulo'),
+    descripcion:  gv('f-desc'),
+    pasos:        gv('f-pasos'),
+    nombre:       gv('f-nombre'),
+    correo:       gv('f-correo'),
+    area:         gv('f-area'),
+    version:      gv('f-version'),
+    prioridad:    selPrio,
+    impacto:      gv('f-impacto'),
+    entorno:      gv('f-entorno'),
+    urlExterno:   gv('f-url'),
+    notas:        gv('f-notas'),
+    imagenes:     [...uploadedFiles],
+    estado:       'pendiente',
+    respuesta:    '',
+    asignadoA:    '',
+    fechaEstimada:'',
+    fechaCreacion:    new Date().toISOString(),
+    fechaActualizacion: new Date().toISOString(),
+    historial: [{ fecha: new Date().toISOString(), accion: 'Caso creado', autor: gv('f-nombre') }]
+  };
+  cases.unshift(nc);
+  save();
+  updateNavBadges();
+  toast('success', '¡Caso registrado!', `ID: ${nc.id} — Prioridad ${nc.prioridad}`);
+  navigate('casos', '');
+}
+
+function resetForm() {
+  selTipo = null; selPrio = null; uploadedFiles = [];
+  ['to-web','to-movil','to-escritorio','to-proyecto'].forEach(id =>
+    document.getElementById(id).className = 'tipo-opt'
+  );
+  ['po-baja','po-media','po-alta','po-critica'].forEach(id =>
+    document.getElementById(id).classList.remove('sel')
+  );
+  ['f-tipo-caso','f-proyecto','f-nombre','f-correo','f-area','f-version',
+   'f-titulo','f-desc','f-pasos','f-impacto','f-entorno','f-url','f-notas'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('btn-s1').disabled = true;
+  document.getElementById('btn-s2').disabled = true;
+  document.getElementById('file-preview').innerHTML = '';
+  goStep(1);
+}
+
+// ══════════════════════════════════════════════════════
+// RENDER CASES
+// ══════════════════════════════════════════════════════
+function renderCases() {
+  const search   = (document.getElementById('s-search').value || '').toLowerCase();
+  const fTipo    = document.getElementById('s-tipo').value;
+  const fEstado  = document.getElementById('s-estado').value;
+  const fPrio    = document.getElementById('s-prio').value;
+
+  const filtered = cases.filter(c => {
+    const ms = !search || [c.titulo, c.id, c.nombre, c.proyecto, c.tipoCaso]
+      .some(x => (x||'').toLowerCase().includes(search));
+    return ms &&
+      (!fTipo   || c.tipo      === fTipo)   &&
+      (!fEstado || c.estado    === fEstado) &&
+      (!fPrio   || c.prioridad === fPrio);
+  });
+
+  document.getElementById('cases-count').textContent = `${filtered.length} caso${filtered.length !== 1 ? 's' : ''}`;
+
+  const list = document.getElementById('case-list');
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty-state"><i class="fas fa-search"></i><h3>Sin resultados</h3><p>Prueba cambiando los filtros de búsqueda</p></div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(c => {
+    const t = TIPO_META[c.tipo];
+    const e = ESTADO_META[c.estado];
+    return `
+      <div class="case-card" onclick="openCase('${c.id}')">
+        <div class="case-type-icon" style="background:${t.bg};color:${t.color}">
+          <i class="fas ${t.icon}"></i>
+        </div>
+        <div class="case-body">
+          <div class="case-id-row">
+            <span class="case-id-label">${c.id}</span>
+            <span style="font-size:11px;color:var(--text-muted)">·</span>
+            <span style="font-size:11px;color:var(--text-muted)">${c.proyecto}</span>
+          </div>
+          <div class="case-title">${c.titulo}</div>
+          <div class="case-sub">${t.emoji} ${c.tipoCaso}</div>
+        </div>
+        <div class="case-meta">
+          <span class="badge b-${c.estado}"><i class="fas ${e.icon}"></i> ${e.label}</span>
+          <span class="badge b-${c.prioridad}">${c.prioridad.charAt(0).toUpperCase()+c.prioridad.slice(1)}</span>
+          <span class="case-date">${fmtShort(c.fechaCreacion)}</span>
+          ${c.imagenes?.length ? `<span style="font-size:11px;color:var(--text-muted)"><i class="fas fa-paperclip"></i> ${c.imagenes.length}</span>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function clearFilters() {
+  ['s-search','s-tipo','s-estado','s-prio'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  activeFilter = '';
+  renderCases();
+}
+
+// ══════════════════════════════════════════════════════
+// MODAL DETALLE
+// ══════════════════════════════════════════════════════
+function openCase(id) {
+  activeCaseId = id;
+  const c = cases.find(x => x.id === id);
+  if (!c) return;
+
+  const t  = TIPO_META[c.tipo];
+  const im = { ninguno:'Sin impacto visible', bajo:'Pocos usuarios', medio:'Grupo significativo', alto:'Mayoría de usuarios', total:'Todos / Sistema caído' };
+  const en = { desarrollo:'Desarrollo', testing:'Testing / QA', staging:'Staging', produccion:'Producción' };
+
+  document.getElementById('m-id').innerHTML    = `<span class="badge b-${c.tipo}">${t.emoji} ${t.label}</span> &nbsp;${c.id} &nbsp;·&nbsp; ${fmtDate(c.fechaCreacion)}`;
+  document.getElementById('m-title').textContent = c.titulo;
+
+  document.getElementById('m-body').innerHTML = `
+
+    <!-- INFO -->
+    <div class="detail-section">
+      <h4><i class="fas fa-info-circle"></i> Información General</h4>
+      <div class="detail-grid">
+        ${di('Tipo de Avería', c.tipoCaso)}
+        ${di('Proyecto / Sistema', c.proyecto)}
+        ${di('Versión / Build', c.version || '—')}
+        ${di('Área / Depto.', c.area || '—')}
+        ${di('Entorno', en[c.entorno] || '—')}
+        ${di('Impacto', im[c.impacto] || '—')}
+        ${di('Prioridad', `<span style="color:${PRIO_COLOR[c.prioridad]};font-weight:700">${c.prioridad.toUpperCase()}</span>`)}
+        ${di('Fecha Estimada', c.fechaEstimada ? new Date(c.fechaEstimada).toLocaleDateString('es-PE') : '—')}
+      </div>
+    </div>
+
+    <!-- REPORTADO POR -->
+    <div class="detail-section">
+      <h4><i class="fas fa-user"></i> Reportado Por</h4>
+      <div class="detail-grid">
+        ${di('Nombre', c.nombre)}
+        ${di('Correo', `<a href="mailto:${c.correo}" style="color:var(--accent)">${c.correo}</a>`)}
+      </div>
+    </div>
+
+    <!-- DESCRIPCIÓN -->
+    <div class="detail-section">
+      <h4><i class="fas fa-align-left"></i> Descripción del Problema</h4>
+      <div class="detail-desc">${(c.descripcion||'').replace(/\n/g,'<br>')}</div>
+    </div>
+
+    ${c.pasos ? `<div class="detail-section">
+      <h4><i class="fas fa-list-ol"></i> Pasos para Reproducir</h4>
+      <div class="detail-desc">${c.pasos.replace(/\n/g,'<br>')}</div>
+    </div>` : ''}
+
+    ${c.notas ? `<div class="detail-section">
+      <h4><i class="fas fa-sticky-note"></i> Notas Adicionales</h4>
+      <div class="detail-desc">${c.notas}</div>
+    </div>` : ''}
+
+    ${c.urlExterno ? `<div class="detail-section">
+      <h4><i class="fas fa-external-link-alt"></i> Recurso Externo</h4>
+      <a href="${c.urlExterno}" target="_blank" rel="noopener" style="color:var(--accent);font-size:14px;word-break:break-all">${c.urlExterno}</a>
+    </div>` : ''}
+
+    <!-- EVIDENCIA -->
+    ${c.imagenes?.length ? `<div class="detail-section">
+      <h4><i class="fas fa-images"></i> Evidencia Adjunta (${c.imagenes.length})</h4>
+      <div class="proof-grid">
+        ${c.imagenes.map(f => f.type?.startsWith('image/')
+          ? `<img src="${f.data}" onclick="zoomImg('${f.data}')" title="${f.name}">`
+          : `<div class="file-doc" style="pointer-events:none"><i class="fas fa-file"></i> ${f.name}</div>`
+        ).join('')}
+      </div>
+    </div>` : ''}
+
+    <!-- HISTORIAL -->
+    <div class="detail-section">
+      <h4><i class="fas fa-history"></i> Historial de Actividad</h4>
+      <div class="timeline">
+        ${(c.historial||[]).map(h => `
+          <div class="timeline-item">
+            <div class="ti-date">${fmtDate(h.fecha)}</div>
+            <div class="ti-txt">${h.accion}${h.autor ? ` — <strong>${h.autor}</strong>` : ''}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- ESTADO -->
+    <div class="detail-section">
+      <h4><i class="fas fa-flag"></i> Estado del Caso</h4>
+      <div class="status-pills">
+        ${['pendiente','revisado','solucionado','cerrado'].map(s => `
+          <div class="sp sp-${s} ${c.estado===s?'sel':''}" id="spill-${s}" onclick="changeStatus('${s}')">
+            <i class="fas ${ESTADO_META[s].icon}"></i> ${ESTADO_META[s].label}
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- ASIGNACIÓN -->
+    <div class="detail-section">
+      <h4><i class="fas fa-user-check"></i> Asignación Técnica</h4>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Técnico Asignado</label>
+          <input type="text" id="m-asig" value="${c.asignadoA||''}" placeholder="Nombre del técnico responsable">
+        </div>
+        <div class="form-group">
+          <label>Fecha Estimada de Solución</label>
+          <input type="date" id="m-fecha" value="${c.fechaEstimada||''}">
+        </div>
+      </div>
+    </div>
+
+    <!-- RESPUESTA -->
+    <div class="detail-section">
+      <h4><i class="fas fa-reply"></i> Respuesta del Equipo Técnico</h4>
+      ${c.respuesta ? `<div class="response-box"><div class="resp-lbl"><i class="fas fa-shield-alt"></i> Respuesta actual</div><p>${c.respuesta.replace(/\n/g,'<br>')}</p></div>` : ''}
+      <textarea id="m-resp" rows="4" placeholder="Escribe aquí la respuesta técnica, solución implementada o seguimiento del caso...">${c.respuesta||''}</textarea>
+    </div>
+  `;
+
+  document.getElementById('case-modal').classList.add('open');
+}
+
+function di(lbl, val) {
+  return `<div class="detail-item"><div class="di-lbl">${lbl}</div><div class="di-val">${val}</div></div>`;
+}
+
+function changeStatus(status) {
+  const c = cases.find(x => x.id === activeCaseId);
+  if (!c) return;
+  const old = c.estado;
+  if (old === status) return;
+  c.estado = status;
+  c.fechaActualizacion = new Date().toISOString();
+  c.historial.push({ fecha: new Date().toISOString(), accion: `Estado: ${ESTADO_META[old].label} → ${ESTADO_META[status].label}` });
+  save(); updateNavBadges();
+  document.querySelectorAll('.sp').forEach(el => el.classList.remove('sel'));
+  document.getElementById('spill-' + status).classList.add('sel');
+  toast('info', 'Estado actualizado', ESTADO_META[status].label);
+}
+
+function saveModal() {
+  const c = cases.find(x => x.id === activeCaseId);
+  if (!c) return;
+  const resp  = document.getElementById('m-resp')?.value.trim()  || '';
+  const asig  = document.getElementById('m-asig')?.value.trim()  || '';
+  const fecha = document.getElementById('m-fecha')?.value        || '';
+  if (resp && resp !== c.respuesta) {
+    c.respuesta = resp;
+    c.historial.push({ fecha: new Date().toISOString(), accion: 'Respuesta técnica actualizada' });
+  }
+  if (asig)  { c.asignadoA    = asig;  }
+  if (fecha) { c.fechaEstimada = fecha; }
+  c.fechaActualizacion = new Date().toISOString();
+  save();
+  toast('success', 'Cambios guardados', `Caso ${activeCaseId} actualizado`);
+  closeModal();
+  renderCases();
+}
+
+function closeModal() { document.getElementById('case-modal').classList.remove('open'); }
+
+// ══════════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════════
+function renderDashboard() {
+  const total = cases.length;
+  const byEstado = (e) => cases.filter(c => c.estado === e).length;
+  const byTipo   = (t) => cases.filter(c => c.tipo === t).length;
+  const byPrio   = (p) => cases.filter(c => c.prioridad === p).length;
+
+  const pend = byEstado('pendiente'), rev = byEstado('revisado'),
+        sol  = byEstado('solucionado'), cer = byEstado('cerrado'),
+        crit = byPrio('critica');
+
+  document.getElementById('stats-grid').innerHTML = `
+    ${sc('Total de Casos', total,  'fa-ticket-alt',   'var(--accent)',  'rgba(0,200,255,.1)')}
+    ${sc('Pendientes',     pend,   'fa-clock',         'var(--warning)','rgba(245,158,11,.1)')}
+    ${sc('En Revisión',    rev,    'fa-eye',            'var(--info)',   'rgba(59,130,246,.1)')}
+    ${sc('Solucionados',   sol,    'fa-check-circle',   'var(--success)','rgba(16,185,129,.1)')}
+    ${sc('Cerrados',       cer,    'fa-archive',        '#9ca3af',       'rgba(107,114,128,.1)')}
+    ${sc('Críticos',       crit,   'fa-fire',           'var(--danger)', 'rgba(239,68,68,.1)')}
+  `;
+
+  // Recent cases
+  const rc = document.getElementById('recent-cases');
+  const r5 = cases.slice(0,5);
+  if (!r5.length) {
+    rc.innerHTML = `<div class="empty-state" style="padding:30px"><i class="fas fa-inbox"></i><p>Aún no hay casos registrados</p></div>`;
+  } else {
+    rc.innerHTML = r5.map(c => {
+      const t = TIPO_META[c.tipo];
+      return `<div onclick="openCase('${c.id}')" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer">
+        <div style="width:36px;height:36px;border-radius:8px;background:${t.bg};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${t.emoji}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.titulo}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${c.id} · ${c.nombre}</div>
+        </div>
+        <span class="badge b-${c.estado}" style="flex-shrink:0">${ESTADO_META[c.estado].label}</span>
+      </div>`;
+    }).join('');
+  }
+
+  barChart('dash-chart-tipo', [
+    { l:'🌐 Web',        n:byTipo('web'),        c:'var(--info)'    },
+    { l:'📱 Móvil',      n:byTipo('movil'),      c:'var(--purple)'  },
+    { l:'💻 Escritorio', n:byTipo('escritorio'), c:'var(--success)' },
+    { l:'🏢 Proyecto',   n:byTipo('proyecto'),   c:'var(--warning)' },
+  ]);
+  barChart('dash-chart-prio', [
+    { l:'🔴 Crítica', n:byPrio('critica'), c:'var(--danger)'  },
+    { l:'🟠 Alta',    n:byPrio('alta'),    c:'#f97316'        },
+    { l:'🟡 Media',   n:byPrio('media'),   c:'var(--warning)' },
+    { l:'🟢 Baja',    n:byPrio('baja'),    c:'var(--success)' },
+  ]);
+  barChart('dash-chart-estado', [
+    { l:'⏳ Pendiente',    n:pend, c:'var(--warning)' },
+    { l:'👁️ En Revisión', n:rev,  c:'var(--info)'    },
+    { l:'✅ Solucionado',  n:sol,  c:'var(--success)' },
+    { l:'🗃️ Cerrado',     n:cer,  c:'#9ca3af'        },
+  ]);
+}
+
+function sc(label, num, icon, color, bg) {
+  return `<div class="stat-card" style="border-left:3px solid ${color}">
+    <div class="stat-icon" style="background:${bg};color:${color}"><i class="fas ${icon}"></i></div>
+    <div class="stat-info"><div class="num" style="color:${color}">${num}</div><div class="label">${label}</div></div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════
+// REPORTES
+// ══════════════════════════════════════════════════════
+function renderReportes() {
+  const byE = (e) => cases.filter(c => c.estado === e).length;
+  const byT = (t) => cases.filter(c => c.tipo === t).length;
+  const byP = (p) => cases.filter(c => c.prioridad === p).length;
+
+  barChart('r-tipo', [
+    { l:'🌐 Web',        n:byT('web'),        c:'var(--info)'    },
+    { l:'📱 Móvil',      n:byT('movil'),      c:'var(--purple)'  },
+    { l:'💻 Escritorio', n:byT('escritorio'), c:'var(--success)' },
+    { l:'🏢 Proyecto',   n:byT('proyecto'),   c:'var(--warning)' },
+  ]);
+  barChart('r-estado', [
+    { l:'⏳ Pendiente',    n:byE('pendiente'),   c:'var(--warning)' },
+    { l:'👁️ En Revisión', n:byE('revisado'),    c:'var(--info)'    },
+    { l:'✅ Solucionado',  n:byE('solucionado'), c:'var(--success)' },
+    { l:'🗃️ Cerrado',     n:byE('cerrado'),     c:'#9ca3af'        },
+  ]);
+  barChart('r-prio', [
+    { l:'🔴 Crítica', n:byP('critica'), c:'var(--danger)'  },
+    { l:'🟠 Alta',    n:byP('alta'),    c:'#f97316'        },
+    { l:'🟡 Media',   n:byP('media'),   c:'var(--warning)' },
+    { l:'🟢 Baja',    n:byP('baja'),    c:'var(--success)' },
+  ]);
+
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate()-i);
+    const ds = d.toISOString().split('T')[0];
+    days.push({
+      l: d.toLocaleDateString('es-PE',{day:'2-digit',month:'short'}),
+      n: cases.filter(c => c.fechaCreacion.startsWith(ds)).length,
+      c: 'var(--accent)'
+    });
+  }
+  barChart('r-act', days);
+}
+
+// ══════════════════════════════════════════════════════
+// BAR CHART
+// ══════════════════════════════════════════════════════
+function barChart(id, data) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const max = Math.max(...data.map(d => d.n), 1);
+  if (data.every(d => d.n === 0)) {
+    el.innerHTML = `<div class="empty-state" style="padding:24px"><i class="fas fa-chart-bar"></i><p>Sin datos aún</p></div>`;
+    return;
+  }
+  el.innerHTML = data.map(d => `
+    <div class="chart-row">
+      <div class="cr-lbl">${d.l}</div>
+      <div class="cr-bar"><div class="cr-fill" style="width:${(d.n/max*100).toFixed(1)}%;background:${d.c}"></div></div>
+      <div class="cr-num" style="color:${d.c}">${d.n}</div>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════════════
+// NAV BADGES
+// ══════════════════════════════════════════════════════
+function updateNavBadges() {
+  document.getElementById('nb-total').textContent     = cases.length;
+  document.getElementById('nb-pendiente').textContent = cases.filter(c => c.estado==='pendiente').length;
+}
+
+// ══════════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════════
+function toast(type, title, msg) {
+  const w = document.getElementById('toast-wrap');
+  const d = document.createElement('div');
+  d.className = `toast t-${type}`;
+  const iMap = { success:'fa-check-circle', error:'fa-times-circle', info:'fa-info-circle' };
+  const cMap = { success:'var(--success)',  error:'var(--danger)',   info:'var(--info)'    };
+  d.innerHTML = `
+    <i class="fas ${iMap[type]||'fa-bell'}" style="font-size:20px;color:${cMap[type]};flex-shrink:0"></i>
+    <div><div class="toast-title">${title}</div><div class="toast-msg">${msg}</div></div>`;
+  w.appendChild(d);
+  setTimeout(() => d.remove(), 4200);
+}
+
+// ══════════════════════════════════════════════════════
+// TRABAJADORES — login + contraseña maestra + lista
+// Consume la API centralizada QUBIRA (carpeta API/), NUNCA la base
+// de datos directamente. El JWT viaja en cada request via Bearer.
+// ══════════════════════════════════════════════════════
+
+/* Cambia esto por la URL real de la API una vez desplegada en Render,
+   ej: 'https://qubira-api.onrender.com' */
+const QS_API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://localhost:4000'
+  : 'https://api-qubira.onrender.com';
+
+let qsToken   = localStorage.getItem('qs_token') || null;
+let qsUser    = JSON.parse(localStorage.getItem('qs_user') || 'null');
+
+/* La contraseña maestra SOLO vive en memoria de esta pestaña.
+   Si se recarga la página, se pierde y hay que volver a pedirla. */
+let msPassword  = null;
+let msVerified  = false;
+
+let trabajadores      = [];
+let pwdTargetId        = null;
+
+/* ── Helper de fetch autenticado contra la API centralizada ── */
+async function qsApiFetch(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+  if (qsToken) headers.Authorization = 'Bearer ' + qsToken;
+  if (opts.withMaster && msPassword) headers['X-Master-Password'] = msPassword;
+
+  const res = await fetch(QS_API_BASE + path, { ...opts, headers });
+
+  if (res.status === 401) {
+    qsClearSession();
+    throw new Error('SESSION_EXPIRED');
+  }
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || ('Error ' + res.status));
+  return data;
+}
+
+function qsClearSession() {
+  qsToken = null;
+  qsUser  = null;
+  localStorage.removeItem('qs_token');
+  localStorage.removeItem('qs_user');
+}
+
+/* ── Entrada al panel Trabajadores ── */
+function goToLogin(next) {
+  window.location.href = 'login.html' + (next ? ('?next=' + encodeURIComponent(next)) : '');
+}
+
+function openTrabajadores() {
+  if (!qsToken) {
+    goToLogin('trabajadores');
+    return;
+  }
+  navigate('trabajadores');
+  renderSessionBar();
+  if (msVerified) {
+    showTrabajadoresContent();
+  } else {
+    showMasterGate();
+  }
+}
+
+function renderSessionBar() {
+  const el = document.getElementById('tw-session-name');
+  if (!el) return;
+  if (qsUser) {
+    const nombre = `${qsUser.nombre} ${qsUser.apellidos || ''}`.trim();
+    el.textContent = `${nombre} (@${qsUser.username}) · ${qsUser.rol}`;
+  } else {
+    el.textContent = '—';
+  }
+}
+
+async function logoutTrabajadores() {
+  try {
+    await qsApiFetch('/api/auth/logout', { method: 'POST' });
+  } catch (err) {
+    /* si el token ya estaba vencido, igual seguimos con el logout local */
+  }
+  qsClearSession();
+  msVerified = false;
+  msPassword = null;
+  toast('info', 'Sesión cerrada', 'Saliste del panel de Trabajadores.');
+  navigate('dashboard');
+}
+
+function showMasterGate() {
+  document.getElementById('tw-gate').style.display    = 'block';
+  document.getElementById('tw-content').style.display = 'none';
+  document.getElementById('tw-master-input').value = '';
+  hideEl('tw-gate-error');
+  setTimeout(() => document.getElementById('tw-master-input')?.focus(), 100);
+}
+
+function showTrabajadoresContent() {
+  document.getElementById('tw-gate').style.display    = 'none';
+  document.getElementById('tw-content').style.display = 'block';
+  loadTrabajadores();
+}
+
+function lockTrabajadores() {
+  msVerified = false;
+  msPassword = null;
+  showMasterGate();
+}
+
+function hideEl(id) { const e = document.getElementById(id); if (e) e.style.display = 'none'; }
+function showErr(id, msg) { const e = document.getElementById(id); if (!e) return; e.textContent = msg; e.style.display = 'block'; }
+
+/* ── CONTRASEÑA MAESTRA ── */
+async function verifyMasterPassword() {
+  const password = gv('tw-master-input');
+  if (!password) { showErr('tw-gate-error', 'Ingresa la contraseña maestra.'); return; }
+
+  const btn = document.getElementById('tw-gate-btn');
+  btn.disabled = true;
+  hideEl('tw-gate-error');
+
+  try {
+    await qsApiFetch('/api/soporte/master-password/verify', {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    });
+    msPassword = password;
+    msVerified = true;
+    showTrabajadoresContent();
+  } catch (err) {
+    if (err.message === 'SESSION_EXPIRED') {
+      toast('error', 'Sesión expirada', 'Vuelve a iniciar sesión.');
+      goToLogin('trabajadores');
+    } else {
+      showErr('tw-gate-error', err.message || 'Contraseña maestra incorrecta.');
+    }
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ── LISTA DE TRABAJADORES ── */
+async function loadTrabajadores() {
+  const body = document.getElementById('tw-list-body');
+  body.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)">Cargando…</div>';
+
+  try {
+    const data = await qsApiFetch('/api/soporte/trabajadores', { withMaster: true });
+    trabajadores = data.trabajadores || [];
+    renderTrabajadores();
+  } catch (err) {
+    if (err.message === 'SESSION_EXPIRED') {
+      goToLogin('trabajadores');
+      return;
+    }
+    /* la contraseña maestra pudo haber quedado obsoleta */
+    msVerified = false;
+    msPassword = null;
+    showMasterGate();
+    showErr('tw-gate-error', err.message || 'No se pudo verificar la contraseña maestra.');
+  }
+}
+
+const ROL_ICON_TW = { CEO:'👑', ADMIN:'🛡', DEVELOPER:'💻', DESIGNER:'🎨', QA:'🧪', VIEWER:'👁' };
+
+function renderTrabajadores() {
+  const q = (gv('tw-search') || '').toLowerCase();
+  const list = trabajadores.filter(t => {
+    if (!q) return true;
+    return (t.nombre + ' ' + (t.apellidos||'') + ' ' + t.correo + ' ' + t.username).toLowerCase().includes(q);
+  });
+
+  const body  = document.getElementById('tw-list-body');
+  const empty = document.getElementById('tw-empty');
+  body.innerHTML = '';
+  empty.style.display = list.length ? 'none' : 'block';
+
+  list.forEach(t => {
+    const card = document.createElement('div');
+    card.className = 'case-card';
+    card.style.cursor = 'default';
+    const estadoOk = t.estado === 'activo';
+    card.innerHTML = `
+      <div class="case-type-icon" style="background:rgba(0,200,255,.12)">${ROL_ICON_TW[t.rol] || '👤'}</div>
+      <div class="case-body">
+        <div class="case-id-row">
+          <span class="case-title" style="white-space:normal">${escapeHtmlTw(t.nombre)} ${escapeHtmlTw(t.apellidos || '')}</span>
+          <span class="badge" style="background:${estadoOk ? 'rgba(16,185,129,.14)' : 'rgba(239,68,68,.14)'};color:${estadoOk ? 'var(--success)' : 'var(--danger)'}">${estadoOk ? 'Activo' : 'Inactivo'}</span>
+        </div>
+        <div class="case-sub">${escapeHtmlTw(t.correo)} · @${escapeHtmlTw(t.username)} · ${escapeHtmlTw(t.rol)}</div>
+        <div class="case-sub" style="opacity:.7">${escapeHtmlTw(t.celular || 'Sin celular')} ${t.dni ? '· DNI ' + escapeHtmlTw(t.dni) : ''}</div>
+      </div>
+      <div class="case-meta">
+        <button class="btn btn-outline btn-sm" onclick="openPwdModal(${t.id})"><i class="fas fa-key"></i> Contraseña</button>
+      </div>
+    `;
+    body.appendChild(card);
+  });
+}
+
+function escapeHtmlTw(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+/* ── CAMBIAR CONTRASEÑA (único campo editable) ── */
+function openPwdModal(id) {
+  const t = trabajadores.find(x => x.id === id);
+  if (!t) return;
+  pwdTargetId = id;
+  document.getElementById('pwd-target-name').textContent = `${t.nombre} ${t.apellidos || ''} (@${t.username})`;
+  document.getElementById('pwd-new').value = '';
+  document.getElementById('pwd-confirm').value = '';
+  hideEl('pwd-error');
+  document.getElementById('pwd-modal').classList.add('open');
+}
+function closePwdModal() {
+  document.getElementById('pwd-modal').classList.remove('open');
+  pwdTargetId = null;
+}
+
+async function savePassword() {
+  const nueva   = gv('pwd-new');
+  const confirm = gv('pwd-confirm');
+
+  if (nueva.length < 8) { showErr('pwd-error', 'La contraseña debe tener al menos 8 caracteres.'); return; }
+  if (nueva !== confirm) { showErr('pwd-error', 'Las contraseñas no coinciden.'); return; }
+
+  const btn = document.getElementById('pwd-save-btn');
+  btn.disabled = true;
+  hideEl('pwd-error');
+
+  try {
+    const data = await qsApiFetch(`/api/soporte/trabajadores/${pwdTargetId}/password`, {
+      method: 'PATCH',
+      withMaster: true,
+      body: JSON.stringify({ nueva_password: nueva }),
+    });
+    toast('success', 'Contraseña actualizada', data.message || 'Listo.');
+    closePwdModal();
+  } catch (err) {
+    if (err.message === 'SESSION_EXPIRED') {
+      closePwdModal();
+      goToLogin('trabajadores');
+    } else {
+      showErr('pwd-error', err.message || 'No se pudo cambiar la contraseña.');
+    }
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// ZOOM
+// ══════════════════════════════════════════════════════
+function zoomImg(src) {
+  document.getElementById('zoom-img').src = src;
+  const ov = document.getElementById('zoom-ov');
+  ov.style.display = 'flex';
+}
+
+// ══════════════════════════════════════════════════════
+// SIDEBAR MOBILE
+// ══════════════════════════════════════════════════════
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('mob-overlay').classList.toggle('vis');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('mob-overlay').classList.remove('vis');
+}
+
+// ══════════════════════════════════════════════════════
+// UTIL
+// ══════════════════════════════════════════════════════
+function gv(id) { return (document.getElementById(id)?.value || '').trim(); }
+
+// ══════════════════════════════════════════════════════
+// DATOS DEMO (primera visita)
+// ══════════════════════════════════════════════════════
+function seedDemo() {
+  const now = Date.now();
+  const demo = [
+    {
+      id:'QS-0001', tipo:'web', tipoCaso:'Certificados SSL vencidos',
+      proyecto:'Portal Web Quibira', titulo:'SSL expirado — usuarios no pueden acceder al portal',
+      descripcion:'El certificado SSL del portal de clientes principal expiró esta madrugada. Todos los navegadores muestran alerta de seguridad y bloquean el acceso.\n\nAfecta el 100% de los usuarios del portal.',
+      pasos:'1. Ingresar a portal.quibira.com\n2. El navegador muestra "Tu conexión no es privada"\n3. No es posible continuar sin aceptar el riesgo',
+      nombre:'Carlos Mendoza', correo:'carlos@quibira.com', area:'IT', version:'2.1.0',
+      prioridad:'critica', impacto:'total', entorno:'produccion', urlExterno:'', notas:'Certificado emitido por Let\'s Encrypt, venció a las 00:00',
+      imagenes:[], estado:'pendiente', respuesta:'', asignadoA:'', fechaEstimada:'',
+      fechaCreacion: new Date(now - 7200000).toISOString(), fechaActualizacion: new Date(now - 7200000).toISOString(),
+      historial:[{ fecha: new Date(now - 7200000).toISOString(), accion:'Caso creado', autor:'Carlos Mendoza' }]
+    },
+    {
+      id:'QS-0002', tipo:'movil', tipoCaso:'Cierres inesperados (Crashes)',
+      proyecto:'App Quibira Mobile', titulo:'La app crashea al usar el escáner QR en Android 14',
+      descripcion:'Al intentar abrir el escáner de código QR dentro de la app en dispositivos Android 14, la aplicación se cierra abruptamente sin mostrar mensaje de error al usuario.',
+      pasos:'1. Abrir la app Quibira Mobile\n2. Navegar a la sección "Escanear"\n3. Apuntar la cámara hacia cualquier código QR\n4. La app se cierra inmediatamente',
+      nombre:'Ana Torres', correo:'ana@quibira.com', area:'Móvil', version:'3.5.1',
+      prioridad:'alta', impacto:'alto', entorno:'produccion', urlExterno:'', notas:'Solo reproducible en Android 14+. Android 13 funciona correctamente.',
+      imagenes:[], estado:'revisado',
+      respuesta:'Se identificó el problema con la versión 4.2.1 de la librería CameraX. Se está preparando un hotfix. ETA: 24 horas.',
+      asignadoA:'Miguel Ríos', fechaEstimada: new Date(now + 86400000).toISOString().split('T')[0],
+      fechaCreacion: new Date(now - 86400000).toISOString(), fechaActualizacion: new Date(now - 14400000).toISOString(),
+      historial:[
+        { fecha: new Date(now - 86400000).toISOString(), accion:'Caso creado', autor:'Ana Torres' },
+        { fecha: new Date(now - 14400000).toISOString(), accion:'Estado: Pendiente → En Revisión' },
+        { fecha: new Date(now - 14400000).toISOString(), accion:'Respuesta técnica actualizada' }
+      ]
+    },
+    {
+      id:'QS-0003', tipo:'escritorio', tipoCaso:'Fugas de RAM (consumo continuo)',
+      proyecto:'Quibira Desktop ERP', titulo:'ERP consume más del 90% de RAM tras 4 horas de uso',
+      descripcion:'Después de aproximadamente 4 horas de uso continuo, el sistema ERP de escritorio acumula uso de RAM de forma progresiva hasta superar el 90% disponible, provocando lentitud extrema.',
+      pasos:'1. Abrir el ERP Desktop\n2. Usar con normalidad (facturas, inventario, reportes)\n3. Después de ~4 horas revisar Administrador de Tareas\n4. El proceso ocupa 6-7 GB de RAM',
+      nombre:'Luis García', correo:'luis@quibira.com', area:'Contabilidad', version:'5.2.3',
+      prioridad:'media', impacto:'medio', entorno:'produccion', urlExterno:'', notas:'Solo en equipos con 8GB RAM. Equipos con 16GB no lo reportan.',
+      imagenes:[], estado:'pendiente', respuesta:'', asignadoA:'', fechaEstimada:'',
+      fechaCreacion: new Date(now - 172800000).toISOString(), fechaActualizacion: new Date(now - 172800000).toISOString(),
+      historial:[{ fecha: new Date(now - 172800000).toISOString(), accion:'Caso creado', autor:'Luis García' }]
+    },
+    {
+      id:'QS-0004', tipo:'proyecto', tipoCaso:'Orquestación fallida (Docker / Kubernetes)',
+      proyecto:'Infraestructura QCloud', titulo:'Contenedores de Kubernetes caen en cascada bajo alta carga',
+      descripcion:'Durante el horario pico (8:00 AM - 9:30 AM), los pods de Kubernetes comienzan a caer en cascada cuando el tráfico supera los 5,000 req/seg. El sistema tarda ~12 minutos en auto-recuperarse.',
+      pasos:'1. Monitorear el clúster durante horario pico\n2. Al superar 5k req/seg, el pod de autenticación se reinicia\n3. La caída del pod auth provoca fallas en cascada en los pods dependientes',
+      nombre:'Sofía Vargas', correo:'sofia@quibira.com', area:'DevOps', version:'K8s 1.28',
+      prioridad:'critica', impacto:'alto', entorno:'produccion', urlExterno:'', notas:'Grafana muestra spikes de memoria en el nodo master antes de las caídas.',
+      imagenes:[], estado:'solucionado',
+      respuesta:'Se aumentó el límite de memoria del pod de autenticación de 512Mi a 2Gi y se configuró HPA con mínimo 3 réplicas. El clúster mantuvo estabilidad durante las pruebas de carga posteriores.',
+      asignadoA:'Roberto Quispe', fechaEstimada:'',
+      fechaCreacion: new Date(now - 259200000).toISOString(), fechaActualizacion: new Date(now - 43200000).toISOString(),
+      historial:[
+        { fecha: new Date(now - 259200000).toISOString(), accion:'Caso creado', autor:'Sofía Vargas' },
+        { fecha: new Date(now - 172800000).toISOString(), accion:'Estado: Pendiente → En Revisión' },
+        { fecha: new Date(now - 43200000).toISOString(),  accion:'Estado: En Revisión → Solucionado' },
+        { fecha: new Date(now - 43200000).toISOString(),  accion:'Respuesta técnica actualizada' }
+      ]
+    }
+  ];
+  cases = demo;
+  save();
+}
+
+// ══════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════
+if (cases.length === 0) seedDemo();
+updateNavBadges();
+renderDashboard();
+
+/* Si venimos de login.html con ?open=trabajadores, abre el panel directo
+   y limpia la URL para que un refresh no lo vuelva a disparar. */
+(function initDeepLink() {
+  const openParam = new URLSearchParams(location.search).get('open');
+  if (openParam === 'trabajadores') {
+    history.replaceState(null, '', location.pathname);
+    openTrabajadores();
+  }
+})();
+</script>
+</body>
+</html>
