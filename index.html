@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>QUIBIRA SOPORTE</title>
+  <title>QUBIRA SOPORTE</title>
   <link rel="icon" href="https://raw.githubusercontent.com/qubira/IMAGENES/main/logo2.png" type="image/png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
@@ -665,9 +665,9 @@
 <!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
-    <img src="https://raw.githubusercontent.com/qubira/IMAGENES/main/logo2.png" alt="Quibira" onerror="this.style.display='none'">
+    <img src="https://raw.githubusercontent.com/qubira/IMAGENES/main/logo2.png" alt="Qubira" onerror="this.style.display='none'">
     <div>
-      <div class="brand">QUIBIRA</div>
+      <div class="brand">QUBIRA</div>
       <div class="sub">SOPORTE TÉCNICO</div>
     </div>
   </div>
@@ -710,7 +710,7 @@
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
       <span class="pulse-dot"></span> Sistema activo
     </div>
-    <div style="font-size:10px;opacity:.5;margin-top:2px">© 2025 Quibira S.A.C.</div>
+    <div style="font-size:10px;opacity:.5;margin-top:2px">© 2025 Qubira S.A.C.</div>
   </div>
 </aside>
 <div class="mob-overlay" id="mob-overlay" onclick="closeSidebar()"></div>
@@ -2117,10 +2117,10 @@ function seedDemo() {
   const demo = [
     {
       id:'QS-0001', tipo:'web', tipoCaso:'Certificados SSL vencidos',
-      proyecto:'Portal Web Quibira', titulo:'SSL expirado — usuarios no pueden acceder al portal',
+      proyecto:'Portal Web Qubira', titulo:'SSL expirado — usuarios no pueden acceder al portal',
       descripcion:'El certificado SSL del portal de clientes principal expiró esta madrugada. Todos los navegadores muestran alerta de seguridad y bloquean el acceso.\n\nAfecta el 100% de los usuarios del portal.',
-      pasos:'1. Ingresar a portal.quibira.com\n2. El navegador muestra "Tu conexión no es privada"\n3. No es posible continuar sin aceptar el riesgo',
-      nombre:'Carlos Mendoza', correo:'carlos@quibira.com', area:'IT', version:'2.1.0',
+      pasos:'1. Ingresar a portal.qubira.com\n2. El navegador muestra "Tu conexión no es privada"\n3. No es posible continuar sin aceptar el riesgo',
+      nombre:'Carlos Mendoza', correo:'carlos@qubira.com', area:'IT', version:'2.1.0',
       prioridad:'critica', impacto:'total', entorno:'produccion', urlExterno:'', notas:'Certificado emitido por Let\'s Encrypt, venció a las 00:00',
       imagenes:[], estado:'pendiente', respuesta:'', asignadoA:'', fechaEstimada:'',
       fechaCreacion: new Date(now - 7200000).toISOString(), fechaActualizacion: new Date(now - 7200000).toISOString(),
@@ -2128,10 +2128,10 @@ function seedDemo() {
     },
     {
       id:'QS-0002', tipo:'movil', tipoCaso:'Cierres inesperados (Crashes)',
-      proyecto:'App Quibira Mobile', titulo:'La app crashea al usar el escáner QR en Android 14',
+      proyecto:'App Qubira Mobile', titulo:'La app crashea al usar el escáner QR en Android 14',
       descripcion:'Al intentar abrir el escáner de código QR dentro de la app en dispositivos Android 14, la aplicación se cierra abruptamente sin mostrar mensaje de error al usuario.',
-      pasos:'1. Abrir la app Quibira Mobile\n2. Navegar a la sección "Escanear"\n3. Apuntar la cámara hacia cualquier código QR\n4. La app se cierra inmediatamente',
-      nombre:'Ana Torres', correo:'ana@quibira.com', area:'Móvil', version:'3.5.1',
+      pasos:'1. Abrir la app Qubira Mobile\n2. Navegar a la sección "Escanear"\n3. Apuntar la cámara hacia cualquier código QR\n4. La app se cierra inmediatamente',
+      nombre:'Ana Torres', correo:'ana@qubira.com', area:'Móvil', version:'3.5.1',
       prioridad:'alta', impacto:'alto', entorno:'produccion', urlExterno:'', notas:'Solo reproducible en Android 14+. Android 13 funciona correctamente.',
       imagenes:[], estado:'revisado',
       respuesta:'Se identificó el problema con la versión 4.2.1 de la librería CameraX. Se está preparando un hotfix. ETA: 24 horas.',
@@ -2145,10 +2145,10 @@ function seedDemo() {
     },
     {
       id:'QS-0003', tipo:'escritorio', tipoCaso:'Fugas de RAM (consumo continuo)',
-      proyecto:'Quibira Desktop ERP', titulo:'ERP consume más del 90% de RAM tras 4 horas de uso',
+      proyecto:'Qubira Desktop ERP', titulo:'ERP consume más del 90% de RAM tras 4 horas de uso',
       descripcion:'Después de aproximadamente 4 horas de uso continuo, el sistema ERP de escritorio acumula uso de RAM de forma progresiva hasta superar el 90% disponible, provocando lentitud extrema.',
       pasos:'1. Abrir el ERP Desktop\n2. Usar con normalidad (facturas, inventario, reportes)\n3. Después de ~4 horas revisar Administrador de Tareas\n4. El proceso ocupa 6-7 GB de RAM',
-      nombre:'Luis García', correo:'luis@quibira.com', area:'Contabilidad', version:'5.2.3',
+      nombre:'Luis García', correo:'luis@qubira.com', area:'Contabilidad', version:'5.2.3',
       prioridad:'media', impacto:'medio', entorno:'produccion', urlExterno:'', notas:'Solo en equipos con 8GB RAM. Equipos con 16GB no lo reportan.',
       imagenes:[], estado:'pendiente', respuesta:'', asignadoA:'', fechaEstimada:'',
       fechaCreacion: new Date(now - 172800000).toISOString(), fechaActualizacion: new Date(now - 172800000).toISOString(),
@@ -2159,7 +2159,7 @@ function seedDemo() {
       proyecto:'Infraestructura QCloud', titulo:'Contenedores de Kubernetes caen en cascada bajo alta carga',
       descripcion:'Durante el horario pico (8:00 AM - 9:30 AM), los pods de Kubernetes comienzan a caer en cascada cuando el tráfico supera los 5,000 req/seg. El sistema tarda ~12 minutos en auto-recuperarse.',
       pasos:'1. Monitorear el clúster durante horario pico\n2. Al superar 5k req/seg, el pod de autenticación se reinicia\n3. La caída del pod auth provoca fallas en cascada en los pods dependientes',
-      nombre:'Sofía Vargas', correo:'sofia@quibira.com', area:'DevOps', version:'K8s 1.28',
+      nombre:'Sofía Vargas', correo:'sofia@qubira.com', area:'DevOps', version:'K8s 1.28',
       prioridad:'critica', impacto:'alto', entorno:'produccion', urlExterno:'', notas:'Grafana muestra spikes de memoria en el nodo master antes de las caídas.',
       imagenes:[], estado:'solucionado',
       respuesta:'Se aumentó el límite de memoria del pod de autenticación de 512Mi a 2Gi y se configuró HPA con mínimo 3 réplicas. El clúster mantuvo estabilidad durante las pruebas de carga posteriores.',
