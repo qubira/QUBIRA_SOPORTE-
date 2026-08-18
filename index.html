@@ -437,6 +437,19 @@
     .form-step.active { display: block; }
     @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
 
+    /* ── CALENDAR TABS ── */
+    .cal-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); }
+    .cal-tab {
+      background: none; border: none; cursor: pointer;
+      padding: 10px 16px; font-size: 13.5px; font-weight: 500;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color .2s, border-color .2s;
+    }
+    .cal-tab:hover { color: var(--text); }
+    .cal-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
     /* ── CASES LIST ── */
     .filters-bar {
       display: flex;
@@ -713,39 +726,39 @@
   </div>
   <nav class="sidebar-nav">
     <div class="nav-section">Principal</div>
-    <div class="nav-item active" onclick="navigate('dashboard')">
+    <div class="nav-item active" data-page="dashboard" data-filter="" onclick="navigate('dashboard')">
       <i class="fas fa-chart-line fa-fw"></i> Dashboard
     </div>
-    <div class="nav-item" onclick="navigate('nuevo')">
+    <div class="nav-item" data-page="nuevo" data-filter="" onclick="navigate('nuevo')">
       <i class="fas fa-plus-circle fa-fw"></i> Nuevo Caso
     </div>
-    <div class="nav-item" onclick="navigate('calendario')">
+    <div class="nav-item" data-page="calendario" data-filter="" onclick="navigate('calendario')">
       <i class="fas fa-calendar-alt fa-fw"></i> Calendario
     </div>
     <div class="nav-section">Gestión</div>
-    <div class="nav-item" onclick="navigate('casos','')">
+    <div class="nav-item" data-page="casos" data-filter="" onclick="navigate('casos','')">
       <i class="fas fa-ticket-alt fa-fw"></i> Todos los Casos
       <span class="nav-badge" id="nb-total">0</span>
     </div>
-    <div class="nav-item" onclick="navigate('casos','pendiente')">
+    <div class="nav-item" data-page="casos" data-filter="pendiente" onclick="navigate('casos','pendiente')">
       <i class="fas fa-clock fa-fw"></i> Pendientes
       <span class="nav-badge warn" id="nb-pendiente">0</span>
     </div>
-    <div class="nav-item" onclick="navigate('casos','revisado')">
+    <div class="nav-item" data-page="casos" data-filter="revisado" onclick="navigate('casos','revisado')">
       <i class="fas fa-eye fa-fw"></i> En Revisión
     </div>
-    <div class="nav-item" onclick="navigate('casos','solucionado')">
+    <div class="nav-item" data-page="casos" data-filter="solucionado" onclick="navigate('casos','solucionado')">
       <i class="fas fa-check-circle fa-fw"></i> Solucionados
     </div>
-    <div class="nav-item" onclick="navigate('casos','cerrado')">
+    <div class="nav-item" data-page="casos" data-filter="cerrado" onclick="navigate('casos','cerrado')">
       <i class="fas fa-archive fa-fw"></i> Cerrados
     </div>
     <div class="nav-section">Reportes</div>
-    <div class="nav-item" onclick="navigate('reportes')">
+    <div class="nav-item" data-page="reportes" data-filter="" onclick="navigate('reportes')">
       <i class="fas fa-chart-bar fa-fw"></i> Estadísticas
     </div>
     <div class="nav-section">Administración</div>
-    <div class="nav-item" onclick="openTrabajadores()">
+    <div class="nav-item" data-page="trabajadores" data-filter="" onclick="openTrabajadores()">
       <i class="fas fa-users-cog fa-fw"></i> Trabajadores
     </div>
   </nav>
@@ -818,14 +831,14 @@
 
     <!-- ═══════════════ CALENDARIO ═══════════════ -->
     <div class="page" id="page-calendario">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
-        <div style="display:flex;gap:8px">
-          <button type="button" class="btn btn-outline cal-tab" id="cal-tab-area" onclick="calSetMode('area')">Calendario — Soporte</button>
-          <button type="button" class="btn btn-outline cal-tab" id="cal-tab-mine" onclick="calSetMode('mine')">Mi agenda</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:2px">
+        <div class="cal-tabs">
+          <button type="button" class="cal-tab" id="cal-tab-area" onclick="calSetMode('area')">Calendario — Soporte</button>
+          <button type="button" class="cal-tab" id="cal-tab-mine" onclick="calSetMode('mine')">Mi agenda</button>
         </div>
         <button class="btn btn-primary" onclick="calOpenForm()"><i class="fas fa-plus"></i> Agregar reunión</button>
       </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px" id="cal-filters">
+      <div class="filters-bar" id="cal-filters" style="margin-top:16px">
         <select id="cal-f-area" onchange="calFilterChange('area', this.value)"></select>
         <input id="cal-f-participant" placeholder="Buscar participante..." oninput="calFilterChange('participant', this.value)">
         <select id="cal-f-type" onchange="calFilterChange('type', this.value)"></select>
@@ -1347,12 +1360,21 @@ function navigate(page, filter) {
   document.getElementById('page-' + page).classList.add('active');
   document.getElementById('page-title').textContent = PAGE_META[page]?.title || page;
   document.getElementById('page-sub').textContent   = PAGE_META[page]?.sub   || '';
+  setActiveNavItem(page, filter !== undefined ? filter : activeFilter);
   if (page === 'dashboard') renderDashboard();
   if (page === 'casos')     { syncFiltersFromNav(); renderCases(); }
   if (page === 'nuevo')     resetForm();
   if (page === 'reportes')  renderReportes();
   if (page === 'calendario') calRender();
   closeSidebar();
+}
+
+function setActiveNavItem(page, filter) {
+  const items = [...document.querySelectorAll('.nav-item[data-page]')];
+  let match = items.find(el => el.dataset.page === page && el.dataset.filter === String(filter || ''));
+  if (!match) match = items.find(el => el.dataset.page === page);
+  items.forEach(el => el.classList.remove('active'));
+  if (match) match.classList.add('active');
 }
 
 function syncFiltersFromNav() {
@@ -1951,9 +1973,8 @@ function calFullName(p) { return [p.nombre, p.apellidos].filter(Boolean).join(' 
 function calIsPrivileged() { return (qsUser?.nivel_acceso || 0) >= 100; }
 
 async function calRender() {
-  document.getElementById('cal-tab-area').className = 'btn cal-tab ' + (calMode === 'area' ? 'btn-primary' : 'btn-outline');
-  document.getElementById('cal-tab-mine').className = 'btn cal-tab ' + (calMode === 'mine' ? 'btn-primary' : 'btn-outline');
-  document.getElementById('cal-filters').style.display = calMode === 'area' ? 'flex' : 'flex';
+  document.getElementById('cal-tab-area').className = 'cal-tab ' + (calMode === 'area' ? 'active' : '');
+  document.getElementById('cal-tab-mine').className = 'cal-tab ' + (calMode === 'mine' ? 'active' : '');
   document.getElementById('cal-f-area').style.display = calMode === 'area' ? '' : 'none';
 
   const areaSel = document.getElementById('cal-f-area');
