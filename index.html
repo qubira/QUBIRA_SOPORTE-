@@ -105,10 +105,37 @@
     }
     .nav-item .nav-badge.warn { background: var(--warning); }
     .sidebar-footer {
-      padding: 16px 20px;
+      padding: 14px 16px;
       border-top: 1px solid rgba(255,255,255,.08);
       font-size: 12px;
       color: var(--sidebar-text);
+    }
+    .sidebar-footer-user { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .sidebar-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--primary-light); color: var(--primary-dark);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 13px; flex-shrink: 0;
+    }
+    .sf-user-name {
+      color: #fff; font-size: 13px; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .sf-user-role {
+      color: var(--sidebar-text); font-size: 11px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .sidebar-logout-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 8px 10px; border-radius: 8px;
+      background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
+      color: var(--sidebar-text); font-size: 12.5px; font-weight: 600;
+      cursor: pointer; transition: .2s ease;
+    }
+    .sidebar-logout-btn:hover {
+      background: rgba(239,68,68,.14);
+      border-color: rgba(239,68,68,.35);
+      color: #fca5a5;
     }
     .pulse-dot {
       display: inline-block;
@@ -723,7 +750,17 @@
     </div>
   </nav>
   <div class="sidebar-footer">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+    <div class="sidebar-footer-user">
+      <div class="sidebar-avatar" id="sf-avatar">–</div>
+      <div style="min-width:0">
+        <div class="sf-user-name" id="sf-name">—</div>
+        <div class="sf-user-role" id="sf-role">—</div>
+      </div>
+    </div>
+    <button class="sidebar-logout-btn" id="sf-logout-btn" title="Cerrar sesión">
+      <i class="fas fa-sign-out-alt"></i> Cerrar sesión
+    </button>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
       <span class="pulse-dot"></span> Sistema activo
     </div>
     <div style="font-size:10px;opacity:.5;margin-top:2px">© 2025 Qubira S.A.C.</div>
@@ -2340,7 +2377,7 @@ function renderSessionBar() {
   }
 }
 
-async function logoutTrabajadores() {
+async function logout() {
   try {
     await qsApiFetch('/api/auth/logout', { method: 'POST' });
   } catch (err) {
@@ -2349,8 +2386,24 @@ async function logoutTrabajadores() {
   qsClearSession();
   msVerified = false;
   msPassword = null;
-  toast('info', 'Sesión cerrada', 'Saliste del panel de Trabajadores.');
-  navigate('dashboard');
+  window.location.href = 'login.html';
+}
+
+async function logoutTrabajadores() {
+  await logout();
+}
+
+function renderSidebarSession() {
+  const avatarEl = document.getElementById('sf-avatar');
+  const nameEl   = document.getElementById('sf-name');
+  const roleEl   = document.getElementById('sf-role');
+  if (!avatarEl || !nameEl || !roleEl) return;
+  if (!qsUser) { avatarEl.textContent = '–'; nameEl.textContent = '—'; roleEl.textContent = '—'; return; }
+  const nombre = `${qsUser.nombre || ''} ${qsUser.apellidos || ''}`.trim() || qsUser.username;
+  const iniciales = (qsUser.nombre?.[0] || qsUser.username?.[0] || '?').toUpperCase() + (qsUser.apellidos?.[0] || '').toUpperCase();
+  avatarEl.textContent = iniciales;
+  nameEl.textContent = nombre;
+  roleEl.textContent = `${qsUser.rol || 'Soporte'} · Qubira`;
 }
 
 function showMasterGate() {
@@ -2615,6 +2668,8 @@ function seedDemo() {
 if (cases.length === 0) seedDemo();
 updateNavBadges();
 renderDashboard();
+renderSidebarSession();
+document.getElementById('sf-logout-btn')?.addEventListener('click', logout);
 
 /* Si venimos de login.html con ?open=trabajadores, abre el panel directo
    y limpia la URL para que un refresh no lo vuelva a disparar. */
