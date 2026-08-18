@@ -8,22 +8,29 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
     :root {
-      --primary: #1a3a6b;
-      --primary-light: #2456a4;
-      --accent: #00c8ff;
-      --accent-dark: #0099cc;
-      --bg: #0d1b2a;
-      --bg-card: #162032;
-      --bg-card2: #1c2d42;
-      --text: #e8f0fe;
-      --text-muted: #7a9cc6;
-      --border: #243552;
-      --success: #10b981;
-      --warning: #f59e0b;
-      --danger: #ef4444;
+      --primary: #4f46e5;
+      --primary-light: #eef2ff;
+      --primary-dark: #4338ca;
+      --accent: #4f46e5;
+      --accent-dark: #4338ca;
+      --bg: #f3f4f6;
+      --bg-card: #ffffff;
+      --bg-card2: #f9fafb;
+      --text: #111827;
+      --text-muted: #6b7280;
+      --border: #e5e7eb;
+      --success: #059669;
+      --warning: #b45309;
+      --danger: #dc2626;
       --info: #3b82f6;
       --purple: #8b5cf6;
       --sidebar-w: 265px;
+      --sidebar-bg: #111827;
+      --sidebar-bg-hover: #1f2937;
+      --sidebar-text: #9ca3af;
+      --sidebar-text-active: #ffffff;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+      --shadow-md: 0 10px 25px -5px rgba(0,0,0,.08), 0 4px 6px -4px rgba(0,0,0,.05);
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -38,8 +45,8 @@
     /* ── SIDEBAR ── */
     .sidebar {
       width: var(--sidebar-w);
-      background: var(--bg-card);
-      border-right: 1px solid var(--border);
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--sidebar-bg);
       display: flex;
       flex-direction: column;
       position: fixed;
@@ -49,7 +56,7 @@
     }
     .sidebar-logo {
       padding: 22px 20px;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid rgba(255,255,255,.08);
       display: flex;
       align-items: center;
       gap: 12px;
@@ -60,29 +67,31 @@
       object-fit: contain;
       border-radius: 10px;
     }
-    .sidebar-logo .brand { font-size: 18px; font-weight: 800; color: var(--accent); letter-spacing: 1.5px; }
-    .sidebar-logo .sub   { font-size: 10px; color: var(--text-muted); letter-spacing: .8px; margin-top: 2px; }
+    .sidebar-logo .brand { font-size: 18px; font-weight: 800; color: #fff; letter-spacing: 1.5px; }
+    .sidebar-logo .sub   { font-size: 10px; color: var(--sidebar-text); letter-spacing: .8px; margin-top: 2px; }
     .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
     .nav-section {
       padding: 14px 18px 4px;
       font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 1.5px;
-      color: var(--text-muted);
+      color: #4b5563;
     }
     .nav-item {
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 11px 20px;
+      padding: 11px 18px;
+      margin: 0 10px 2px;
+      border-radius: 8px;
       cursor: pointer;
-      color: var(--text-muted);
+      color: var(--sidebar-text);
       font-size: 14px;
       border-left: 3px solid transparent;
       transition: all .2s;
     }
-    .nav-item:hover { background: rgba(0,200,255,.06); color: var(--text); }
-    .nav-item.active { background: rgba(0,200,255,.1); color: var(--accent); border-left-color: var(--accent); }
+    .nav-item:hover { background: var(--sidebar-bg-hover); color: var(--sidebar-text-active); }
+    .nav-item.active { background: var(--primary); color: #fff; border-left-color: var(--primary); }
     .nav-item .nav-badge {
       margin-left: auto;
       min-width: 20px;
@@ -97,9 +106,9 @@
     .nav-item .nav-badge.warn { background: var(--warning); }
     .sidebar-footer {
       padding: 16px 20px;
-      border-top: 1px solid var(--border);
+      border-top: 1px solid rgba(255,255,255,.08);
       font-size: 12px;
-      color: var(--text-muted);
+      color: var(--sidebar-text);
     }
     .pulse-dot {
       display: inline-block;
@@ -163,13 +172,13 @@
       transition: all .2s;
     }
     .btn-primary {
-      background: linear-gradient(135deg, var(--primary-light), var(--accent-dark));
+      background: var(--primary);
       color: #fff;
     }
-    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,200,255,.3); }
+    .btn-primary:hover { background: var(--primary-dark); }
     .btn-primary:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
     .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
-    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); background: var(--bg); }
     .btn-sm { padding: 6px 14px; font-size: 12px; }
     .btn-success { background: var(--success); color: #fff; }
     .btn-danger  { background: var(--danger);  color: #fff; }
@@ -194,6 +203,7 @@
       display: flex;
       align-items: center;
       gap: 14px;
+      box-shadow: var(--shadow);
       transition: transform .2s;
       cursor: default;
     }
@@ -217,6 +227,7 @@
       border-radius: 12px;
       padding: 22px;
       margin-bottom: 20px;
+      box-shadow: var(--shadow);
     }
     .card-header {
       display: flex;
@@ -250,7 +261,7 @@
     }
     input:focus, select:focus, textarea:focus {
       border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(0,200,255,.08);
+      box-shadow: 0 0 0 3px var(--primary-light);
     }
     select option { background: var(--bg-card); }
     textarea { resize: vertical; min-height: 90px; }
@@ -265,7 +276,7 @@
       transition: all .2s;
       position: relative;
     }
-    .upload-area:hover, .upload-area.drag-over { border-color: var(--accent); background: rgba(0,200,255,.03); }
+    .upload-area:hover, .upload-area.drag-over { border-color: var(--accent); background: rgba(79,70,229,.04); }
     .upload-area input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
     .upload-icon { font-size: 30px; color: var(--text-muted); margin-bottom: 8px; }
     .upload-text { font-size: 14px; color: var(--text-muted); }
@@ -355,7 +366,7 @@
     .tipo-opt .tipo-emoji { font-size: 30px; }
     .tipo-opt .tipo-name  { font-size: 13px; font-weight: 600; }
     .tipo-opt .tipo-sub   { font-size: 11px; color: var(--text-muted); }
-    .tipo-opt:hover { border-color: var(--accent); background: rgba(0,200,255,.03); }
+    .tipo-opt:hover { border-color: var(--accent); background: rgba(79,70,229,.04); }
     .sel-web       { border-color:var(--info)!important;    background:rgba(59,130,246,.08)!important;  color:var(--info); }
     .sel-movil     { border-color:var(--purple)!important;  background:rgba(139,92,246,.08)!important;  color:var(--purple); }
     .sel-escritorio{ border-color:var(--success)!important; background:rgba(16,185,129,.08)!important;  color:var(--success); }
@@ -391,7 +402,7 @@
       position: relative; z-index: 1;
       transition: all .25s;
     }
-    .step-item.active .step-num { border-color:var(--accent); color:var(--accent); box-shadow:0 0 0 4px rgba(0,200,255,.12); }
+    .step-item.active .step-num { border-color:var(--accent); color:var(--accent); box-shadow:0 0 0 4px rgba(79,70,229,.15); }
     .step-item.done   .step-num { border-color:var(--accent); background:var(--accent); color:var(--bg); }
     .step-lbl { font-size:11px; color:var(--text-muted); margin-top:6px; }
     .step-item.active .step-lbl { color:var(--accent); }
@@ -410,7 +421,7 @@
     .filters-bar input, .filters-bar select { width: auto; min-width: 150px; }
     .case-list { display: flex; flex-direction: column; gap: 10px; }
     .case-card {
-      background: var(--bg-card2);
+      background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 16px 18px;
@@ -419,6 +430,7 @@
       display: flex;
       gap: 14px;
       align-items: flex-start;
+      box-shadow: var(--shadow);
     }
     .case-card:hover { border-color: var(--accent); transform: translateX(3px); }
     .case-type-icon {
@@ -458,7 +470,7 @@
     /* ── MODAL ── */
     .modal-overlay {
       position: fixed; inset: 0;
-      background: rgba(0,0,0,.72);
+      background: rgba(17,24,39,.55);
       z-index: 200;
       display: flex; align-items: center; justify-content: center;
       padding: 20px;
@@ -473,6 +485,7 @@
       width: 100%; max-width: 780px;
       max-height: 92vh;
       overflow-y: auto;
+      box-shadow: var(--shadow-md);
       transform: scale(.96);
       transition: transform .2s;
     }
@@ -558,8 +571,8 @@
 
     /* ── RESPONSE BOX ── */
     .response-box {
-      background: rgba(0,200,255,.04);
-      border: 1px solid rgba(0,200,255,.18);
+      background: rgba(79,70,229,.05);
+      border: 1px solid rgba(79,70,229,.2);
       border-radius: 10px;
       padding: 14px 16px;
       margin-bottom: 12px;
@@ -595,7 +608,7 @@
       background:var(--bg-card2); border:1px solid var(--border);
       border-radius:10px; padding:13px 16px; min-width:270px;
       display:flex; align-items:center; gap:12px;
-      box-shadow:0 8px 28px rgba(0,0,0,.35);
+      box-shadow: var(--shadow-md);
       animation:toastIn .3s ease;
     }
     .toast.t-success { border-left:4px solid var(--success); }
@@ -1736,7 +1749,7 @@ function renderDashboard() {
         crit = byPrio('critica');
 
   document.getElementById('stats-grid').innerHTML = `
-    ${sc('Total de Casos', total,  'fa-ticket-alt',   'var(--accent)',  'rgba(0,200,255,.1)')}
+    ${sc('Total de Casos', total,  'fa-ticket-alt',   'var(--accent)',  'rgba(79,70,229,.1)')}
     ${sc('Pendientes',     pend,   'fa-clock',         'var(--warning)','rgba(245,158,11,.1)')}
     ${sc('En Revisión',    rev,    'fa-eye',            'var(--info)',   'rgba(59,130,246,.1)')}
     ${sc('Solucionados',   sol,    'fa-check-circle',   'var(--success)','rgba(16,185,129,.1)')}
@@ -1981,7 +1994,7 @@ function calMeetingCard(m) {
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <strong>${calEsc(m.title)}</strong>
-          <span class="badge" style="background:rgba(99,102,241,.14);color:#818cf8">${calEsc(m.area)}</span>
+          <span class="badge" style="background:rgba(79,70,229,.12);color:var(--accent)">${calEsc(m.area)}</span>
           <span class="badge" style="background:rgba(16,185,129,.14);color:var(--success)">${statusTxt}</span>
           ${isBusy ? '<span class="badge" style="background:rgba(107,114,128,.14);color:#9ca3af"><i class="fas fa-lock"></i> Privada</span>' : ''}
         </div>
@@ -2040,7 +2053,7 @@ function calOpenForm(editId) {
       <label>Participantes internos</label>
       <div style="position:relative">
         <input id="cal-participant-search" placeholder="Buscar por nombre, cargo o área..." oninput="calSearchDirectory(this.value)">
-        <div id="cal-dir-results" style="display:none;position:absolute;z-index:10;left:0;right:0;background:var(--bg-card,#151b2e);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.3);margin-top:4px;max-height:180px;overflow-y:auto"></div>
+        <div id="cal-dir-results" style="display:none;position:absolute;z-index:10;left:0;right:0;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow-md);margin-top:4px;max-height:180px;overflow-y:auto"></div>
       </div>
       <div id="cal-selected-participants" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${calSelectedParticipantsHtml()}</div>
     </div>
@@ -2069,7 +2082,7 @@ function calCloseForm() { document.getElementById('cal-modal').classList.remove(
 function calSelectedParticipantsHtml() {
   if (!calSelectedParticipants.length) return '<p style="font-size:12px;color:var(--text-muted)">Sin participantes internos</p>';
   return calSelectedParticipants.map(p => `
-    <span class="badge" style="display:inline-flex;align-items:center;gap:5px;background:rgba(99,102,241,.14);color:#818cf8">
+    <span class="badge" style="display:inline-flex;align-items:center;gap:5px;background:rgba(79,70,229,.12);color:var(--accent)">
       ${calEsc(calFullName(p))}${p.area ? ' — ' + calEsc(p.area) : ''}
       <i class="fas fa-times" style="cursor:pointer" onclick="calRemoveParticipant(${p.user_id})"></i>
     </span>`).join('');
@@ -2434,7 +2447,7 @@ function renderTrabajadores() {
     card.style.cursor = 'default';
     const estadoOk = t.estado === 'activo';
     card.innerHTML = `
-      <div class="case-type-icon" style="background:rgba(0,200,255,.12)">${ROL_ICON_TW[t.rol] || '👤'}</div>
+      <div class="case-type-icon" style="background:rgba(79,70,229,.12)">${ROL_ICON_TW[t.rol] || '👤'}</div>
       <div class="case-body">
         <div class="case-id-row">
           <span class="case-title" style="white-space:normal">${escapeHtmlTw(t.nombre)} ${escapeHtmlTw(t.apellidos || '')}</span>
