@@ -679,6 +679,9 @@
     <div class="nav-item" onclick="navigate('nuevo')">
       <i class="fas fa-plus-circle fa-fw"></i> Nuevo Caso
     </div>
+    <div class="nav-item" onclick="navigate('calendario')">
+      <i class="fas fa-calendar-alt fa-fw"></i> Calendario
+    </div>
     <div class="nav-section">Gestión</div>
     <div class="nav-item" onclick="navigate('casos','')">
       <i class="fas fa-ticket-alt fa-fw"></i> Todos los Casos
@@ -761,6 +764,26 @@
           <div id="dash-chart-estado" class="chart-container"></div>
         </div>
       </div>
+    </div>
+
+    <!-- ═══════════════ CALENDARIO ═══════════════ -->
+    <div class="page" id="page-calendario">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+        <div style="display:flex;gap:8px">
+          <button type="button" class="btn btn-outline cal-tab" id="cal-tab-area" onclick="calSetMode('area')">Calendario — Soporte</button>
+          <button type="button" class="btn btn-outline cal-tab" id="cal-tab-mine" onclick="calSetMode('mine')">Mi agenda</button>
+        </div>
+        <button class="btn btn-primary" onclick="calOpenForm()"><i class="fas fa-plus"></i> Agregar reunión</button>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px" id="cal-filters">
+        <select id="cal-f-area" onchange="calFilterChange('area', this.value)"></select>
+        <input id="cal-f-participant" placeholder="Buscar participante..." oninput="calFilterChange('participant', this.value)">
+        <select id="cal-f-type" onchange="calFilterChange('type', this.value)"></select>
+        <input type="date" id="cal-f-date-from" onchange="calFilterChange('date_from', this.value)">
+        <input type="date" id="cal-f-date-to" onchange="calFilterChange('date_to', this.value)">
+        <select id="cal-f-status" onchange="calFilterChange('status', this.value)"></select>
+      </div>
+      <div id="cal-list"></div>
     </div>
 
     <!-- ═══════════════ NUEVO CASO ═══════════════ -->
@@ -1057,6 +1080,24 @@
   </div>
 </div>
 
+<!-- ═══════════════ MODAL REUNIÓN (CALENDARIO) ═══════════════ -->
+<div class="modal-overlay" id="cal-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px" id="cal-modal-kicker">Nueva reunión</div>
+        <div style="font-size:18px;font-weight:700">Reunión</div>
+      </div>
+      <button class="close-btn" onclick="calCloseForm()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body" id="cal-modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="calCloseForm()">Cancelar</button>
+      <button class="btn btn-primary" id="cal-save-btn" onclick="calSubmitForm()"><i class="fas fa-save"></i> Guardar reunión</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════ MODAL CAMBIAR CONTRASEÑA ═══════════════ -->
 <div class="modal-overlay" id="pwd-modal">
   <div class="modal" style="max-width:420px">
@@ -1244,6 +1285,7 @@ function fmtShort(iso) {
 const PAGE_META = {
   dashboard:    { title:'Dashboard',          sub:'Resumen general del sistema de soporte' },
   nuevo:        { title:'Nuevo Caso',         sub:'Registra un nuevo reporte de avería'    },
+  calendario:   { title:'Calendario',         sub:'Reuniones de Soporte e interconexión con otras áreas' },
   casos:        { title:'Gestión de Casos',   sub:'Visualiza y administra todos los reportes' },
   reportes:     { title:'Estadísticas',       sub:'Análisis y métricas del sistema de soporte' },
   trabajadores: { title:'Trabajadores',       sub:'Consulta las cuentas del equipo y restablece contraseñas' }
@@ -1259,6 +1301,7 @@ function navigate(page, filter) {
   if (page === 'casos')     { syncFiltersFromNav(); renderCases(); }
   if (page === 'nuevo')     resetForm();
   if (page === 'reportes')  renderReportes();
+  if (page === 'calendario') calRender();
   closeSidebar();
 }
 
@@ -1828,6 +1871,382 @@ function toast(type, title, msg) {
     <div><div class="toast-title">${title}</div><div class="toast-msg">${msg}</div></div>`;
   w.appendChild(d);
   setTimeout(() => d.remove(), 4200);
+}
+
+// ══════════════════════════════════════════════════════
+// CALENDARIO CORPORATIVO — reuniones compartidas entre RR.HH., ADG,
+// TI y Soporte (API/src/routes/calendar.js). Todo prefijado "cal" para
+// no chocar con nombres ya usados en el resto de este archivo.
+// ══════════════════════════════════════════════════════
+const CAL_OWN_AREA = 'SOPORTE';
+const CAL_AREAS = [['SOPORTE','Soporte'],['ADG','ADG'],['TI','TI'],['RRHH','RR. HH.']];
+const CAL_MEETING_TYPES = ['Revisión de incidencia','Soporte técnico','Coordinación','Capacitación','Reunión con otra área','Otro'];
+const CAL_EXTERNAL_KINDS = [['cliente','Cliente'],['postulante','Postulante'],['proveedor','Proveedor'],['consultor','Consultor'],['otro','Otro']];
+const CAL_STATUS_LABEL = { scheduled:'Programada', confirmed:'Confirmada', in_progress:'En curso', completed:'Finalizada', cancelled:'Cancelada' };
+
+let calMode = 'area';
+let calFilters = { area: CAL_OWN_AREA, participant: '', type: '', date_from: calTodayISO(), date_to: '', status: '' };
+let calMeetings = [];
+let calEditingId = null;
+let calConflicts = [];
+let calSelectedParticipants = [];
+let calExternalParticipants = [];
+let calDirResults = [];
+let calDirDebounce, calFilterDebounce;
+let calCheckToken = 0;
+
+function calTodayISO() { return new Date().toISOString().slice(0, 10); }
+function calEsc(s) { return escapeHtmlTw(s); }
+function calFullName(p) { return [p.nombre, p.apellidos].filter(Boolean).join(' '); }
+function calIsPrivileged() { return (qsUser?.nivel_acceso || 0) >= 100; }
+
+async function calRender() {
+  document.getElementById('cal-tab-area').className = 'btn cal-tab ' + (calMode === 'area' ? 'btn-primary' : 'btn-outline');
+  document.getElementById('cal-tab-mine').className = 'btn cal-tab ' + (calMode === 'mine' ? 'btn-primary' : 'btn-outline');
+  document.getElementById('cal-filters').style.display = calMode === 'area' ? 'flex' : 'flex';
+  document.getElementById('cal-f-area').style.display = calMode === 'area' ? '' : 'none';
+
+  const areaSel = document.getElementById('cal-f-area');
+  areaSel.innerHTML = CAL_AREAS.map(([k,l]) => `<option value="${k}" ${calFilters.area===k?'selected':''}>${l}</option>`).join('')
+    + (calIsPrivileged() ? `<option value="ALL" ${calFilters.area==='ALL'?'selected':''}>Todas las áreas</option>` : '');
+  const typeSel = document.getElementById('cal-f-type');
+  typeSel.innerHTML = '<option value="">Todos los tipos</option>' + CAL_MEETING_TYPES.map(t => `<option value="${t}" ${calFilters.type===t?'selected':''}>${t}</option>`).join('');
+  const statusSel = document.getElementById('cal-f-status');
+  statusSel.innerHTML = '<option value="">Todos los estados</option>' + Object.entries(CAL_STATUS_LABEL).map(([k,l]) => `<option value="${k}" ${calFilters.status===k?'selected':''}>${l}</option>`).join('');
+  document.getElementById('cal-f-participant').value = calFilters.participant;
+  document.getElementById('cal-f-date-from').value = calFilters.date_from;
+  document.getElementById('cal-f-date-to').value = calFilters.date_to;
+
+  await calLoad();
+}
+
+function calSetMode(mode) { calMode = mode; calRender(); }
+
+function calFilterChange(key, value) {
+  clearTimeout(calFilterDebounce);
+  if (key === 'participant') {
+    calFilterDebounce = setTimeout(() => { calFilters.participant = value; calLoad(); }, 300);
+  } else {
+    calFilters[key] = value;
+    calLoad();
+  }
+}
+
+async function calLoad() {
+  try {
+    const params = new URLSearchParams();
+    if (calFilters.date_from) params.set('date_from', calFilters.date_from);
+    if (calFilters.date_to) params.set('date_to', calFilters.date_to);
+    if (calFilters.status) params.set('status', calFilters.status);
+    if (calMode === 'mine') params.set('mine', 'true');
+    else params.set('area', calFilters.area);
+
+    let meetings = await qsApiFetch('/api/calendar/meetings?' + params.toString());
+    if (calFilters.participant) {
+      const q = calFilters.participant.toLowerCase();
+      meetings = meetings.filter(m => (m.participants || []).some(p => (p.user_name || p.external_name || '').toLowerCase().includes(q)));
+    }
+    if (calFilters.type) meetings = meetings.filter(m => (m.meeting_type || '').toLowerCase() === calFilters.type.toLowerCase());
+    calMeetings = meetings;
+    calRenderList();
+  } catch (err) {
+    document.getElementById('cal-list').innerHTML = `<div class="card" style="padding:24px;text-align:center;color:var(--text-muted)">${calEsc(err.message || 'Error al cargar el calendario')}</div>`;
+  }
+}
+
+function calRenderList() {
+  const c = document.getElementById('cal-list');
+  if (!calMeetings.length) {
+    c.innerHTML = `<div class="card" style="padding:36px;text-align:center;color:var(--text-muted)"><i class="fas fa-calendar" style="font-size:28px;opacity:.4"></i><p style="margin-top:10px">No hay reuniones en este rango</p></div>`;
+    return;
+  }
+  const groups = {};
+  calMeetings.forEach(m => { (groups[m.meeting_date] ||= []).push(m); });
+  c.innerHTML = Object.entries(groups).map(([date, items]) => `
+    <div style="margin-bottom:18px">
+      <h4 style="font-size:12.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px">${fmtShort(date + 'T00:00:00').split(',')[0]}</h4>
+      <div style="display:flex;flex-direction:column;gap:8px">${items.map(calMeetingCard).join('')}</div>
+    </div>`).join('');
+}
+
+function calMeetingCard(m) {
+  const isBusy = m.visibility === 'busy_only';
+  const participantsHtml = (m.participants || []).map(p => p.participant_type === 'external'
+    ? `${calEsc(p.external_name)} (${(CAL_EXTERNAL_KINDS.find(k=>k[0]===p.external_kind)||[])[1] || p.external_kind})`
+    : `${calEsc(p.user_name || '—')}${p.user_area ? ' — ' + calEsc(p.user_area) : ''}${p.user_cargo ? ' — ' + calEsc(p.user_cargo) : ''}`).join('<br>');
+  const statusTxt = m.status === 'cancelled' ? 'Cancelada' : m.status === 'completed' ? 'Finalizada' : 'Programada';
+  return `
+  <div class="card" style="padding:14px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <strong>${calEsc(m.title)}</strong>
+          <span class="badge" style="background:rgba(99,102,241,.14);color:#818cf8">${calEsc(m.area)}</span>
+          <span class="badge" style="background:rgba(16,185,129,.14);color:var(--success)">${statusTxt}</span>
+          ${isBusy ? '<span class="badge" style="background:rgba(107,114,128,.14);color:#9ca3af"><i class="fas fa-lock"></i> Privada</span>' : ''}
+        </div>
+        <p style="font-size:12.5px;color:var(--text-muted);margin-top:4px">${m.start_time.slice(0,5)} — ${m.end_time.slice(0,5)}${m.meeting_type ? ' · ' + calEsc(m.meeting_type) : ''}</p>
+        ${!isBusy && m.motivo ? `<p style="font-size:13.5px;margin-top:6px">${calEsc(m.motivo)}</p>` : ''}
+        ${!isBusy && participantsHtml ? `<div style="font-size:12.5px;color:var(--text-muted);margin-top:6px">${participantsHtml}</div>` : ''}
+        ${isBusy ? '<p style="font-size:12.5px;color:var(--text-muted);margin-top:6px">Sin acceso al detalle de esta reunión</p>' : ''}
+      </div>
+      ${!isBusy ? `
+      <div style="display:flex;gap:4px;flex-shrink:0">
+        <button type="button" class="btn btn-outline btn-sm" onclick="calViewMeeting('${m.id}')" title="Ver detalle"><i class="fas fa-eye"></i></button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="calOpenForm('${m.id}')" title="Editar"><i class="fas fa-edit"></i></button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="calCancelMeeting('${m.id}')" title="Cancelar"><i class="fas fa-ban"></i></button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="calDeleteMeeting('${m.id}')" title="Eliminar"><i class="fas fa-trash"></i></button>
+      </div>` : ''}
+    </div>
+  </div>`;
+}
+
+function calOpenForm(editId) {
+  const editing = editId ? calMeetings.find(m => m.id === editId) : null;
+  if (editId && (!editing || editing.visibility === 'busy_only')) return;
+  calEditingId = editId || null;
+  calConflicts = [];
+  if (editing) {
+    calSelectedParticipants = (editing.participants || []).filter(p => p.participant_type === 'internal')
+      .map(p => ({ user_id: p.user_id, nombre: p.user_name, area: p.user_area }));
+    calExternalParticipants = (editing.participants || []).filter(p => p.participant_type === 'external')
+      .map(p => ({ name: p.external_name, kind: p.external_kind }));
+  } else {
+    calSelectedParticipants = [];
+    calExternalParticipants = [];
+  }
+
+  document.getElementById('cal-modal-kicker').textContent = editing ? 'Editar reunión' : 'Nueva reunión';
+  document.getElementById('cal-modal-body').innerHTML = `
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Nombre de la reunión *</label>
+      <input id="cal-in-title" value="${calEsc(editing?.title || '')}">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+      <div class="form-group"><label>Fecha *</label><input type="date" id="cal-in-date" value="${editing?.meeting_date || ''}"></div>
+      <div class="form-group"><label>Inicio *</label><input type="time" id="cal-in-start" value="${editing ? editing.start_time.slice(0,5) : ''}"></div>
+      <div class="form-group"><label>Fin *</label><input type="time" id="cal-in-end" value="${editing ? editing.end_time.slice(0,5) : ''}"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Tipo de reunión</label>
+      <select id="cal-in-type">
+        <option value="">— Seleccionar —</option>
+        ${CAL_MEETING_TYPES.map(t => `<option value="${t}" ${editing?.meeting_type===t?'selected':''}>${t}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:12px"><label>Motivo</label><input id="cal-in-motivo" value="${calEsc(editing?.motivo || '')}"></div>
+    <div class="form-group" style="margin-bottom:12px"><label>Descripción</label><textarea id="cal-in-description" rows="2">${calEsc(editing?.description || '')}</textarea></div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Participantes internos</label>
+      <div style="position:relative">
+        <input id="cal-participant-search" placeholder="Buscar por nombre, cargo o área..." oninput="calSearchDirectory(this.value)">
+        <div id="cal-dir-results" style="display:none;position:absolute;z-index:10;left:0;right:0;background:var(--bg-card,#151b2e);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.3);margin-top:4px;max-height:180px;overflow-y:auto"></div>
+      </div>
+      <div id="cal-selected-participants" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${calSelectedParticipantsHtml()}</div>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Participante externo (cliente, postulante, proveedor...)</label>
+      <div style="display:flex;gap:8px">
+        <input id="cal-ext-name" placeholder="Nombre" style="flex:1">
+        <select id="cal-ext-kind" style="width:auto">${CAL_EXTERNAL_KINDS.map(([k,l]) => `<option value="${k}">${l}</option>`).join('')}</select>
+        <button type="button" class="btn btn-outline" onclick="calAddExternal()"><i class="fas fa-plus"></i></button>
+      </div>
+      <div id="cal-selected-externals" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${calSelectedExternalsHtml()}</div>
+    </div>
+    <div id="cal-conflict-banner"></div>
+  `;
+  document.getElementById('cal-save-btn').disabled = false;
+  document.getElementById('cal-save-btn').style.display = '';
+  document.getElementById('cal-modal').classList.add('open');
+
+  ['cal-in-date','cal-in-start','cal-in-end'].forEach(id => {
+    document.getElementById(id).addEventListener('change', calLiveCheck);
+  });
+}
+
+function calCloseForm() { document.getElementById('cal-modal').classList.remove('open'); }
+
+function calSelectedParticipantsHtml() {
+  if (!calSelectedParticipants.length) return '<p style="font-size:12px;color:var(--text-muted)">Sin participantes internos</p>';
+  return calSelectedParticipants.map(p => `
+    <span class="badge" style="display:inline-flex;align-items:center;gap:5px;background:rgba(99,102,241,.14);color:#818cf8">
+      ${calEsc(calFullName(p))}${p.area ? ' — ' + calEsc(p.area) : ''}
+      <i class="fas fa-times" style="cursor:pointer" onclick="calRemoveParticipant(${p.user_id})"></i>
+    </span>`).join('');
+}
+function calSelectedExternalsHtml() {
+  if (!calExternalParticipants.length) return '';
+  return calExternalParticipants.map((p, i) => `
+    <span class="badge" style="display:inline-flex;align-items:center;gap:5px;background:rgba(245,158,11,.14);color:var(--warning)">
+      ${calEsc(p.name)} (${(CAL_EXTERNAL_KINDS.find(k=>k[0]===p.kind)||[])[1] || p.kind})
+      <i class="fas fa-times" style="cursor:pointer" onclick="calRemoveExternal(${i})"></i>
+    </span>`).join('');
+}
+function calConflictBannerHtml() {
+  if (!calConflicts.length) return '';
+  return `
+  <div style="border-radius:8px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35);padding:12px;font-size:13px;color:#f87171;margin-top:4px">
+    <p style="font-weight:700;display:flex;align-items:center;gap:6px"><i class="fas fa-exclamation-triangle"></i> ${calConflicts.length > 1 ? 'Se encontraron ' + calConflicts.length + ' conflictos:' : 'Conflicto de horario'}</p>
+    <ul style="margin:6px 0 0 18px;padding:0">
+      ${calConflicts.map(c => `<li>${calEsc(c.user_name || 'Alguien')} (${calEsc(c.area || '—')}) ya tiene "${calEsc(c.meeting_name)}" de ${c.start_time.slice(0,5)} a ${c.end_time.slice(0,5)} (${c.date}).</li>`).join('')}
+    </ul>
+  </div>`;
+}
+
+function calRemoveParticipant(id) {
+  calSelectedParticipants = calSelectedParticipants.filter(p => p.user_id !== id);
+  document.getElementById('cal-selected-participants').innerHTML = calSelectedParticipantsHtml();
+  calLiveCheck();
+}
+function calRemoveExternal(i) {
+  calExternalParticipants.splice(i, 1);
+  document.getElementById('cal-selected-externals').innerHTML = calSelectedExternalsHtml();
+}
+function calAddExternal() {
+  const nameEl = document.getElementById('cal-ext-name');
+  const kindEl = document.getElementById('cal-ext-kind');
+  const name = nameEl.value.trim();
+  if (!name) return;
+  calExternalParticipants.push({ name, kind: kindEl.value });
+  nameEl.value = '';
+  document.getElementById('cal-selected-externals').innerHTML = calSelectedExternalsHtml();
+}
+
+function calSearchDirectory(q) {
+  clearTimeout(calDirDebounce);
+  const results = document.getElementById('cal-dir-results');
+  q = q.trim();
+  if (!q) { results.style.display = 'none'; results.innerHTML = ''; return; }
+  calDirDebounce = setTimeout(async () => {
+    try {
+      calDirResults = await qsApiFetch('/api/calendar/directory?q=' + encodeURIComponent(q));
+      results.innerHTML = calDirResults.length
+        ? calDirResults.map(p => `
+            <div onclick="calPickParticipant('${p.user_id}')" style="display:flex;justify-content:space-between;padding:8px 12px;cursor:pointer;font-size:13.5px" onmouseover="this.style.background='rgba(255,255,255,.05)'" onmouseout="this.style.background=''">
+              <span>${calEsc(calFullName(p))}</span>
+              <span style="color:var(--text-muted)">${calEsc(p.area || '—')}${p.cargo ? ' · ' + calEsc(p.cargo) : ''}</span>
+            </div>`).join('')
+        : '<div style="padding:8px 12px;color:var(--text-muted);font-size:12.5px">Sin resultados</div>';
+      results.style.display = 'block';
+    } catch { /* silencioso */ }
+  }, 250);
+}
+
+function calPickParticipant(idStr) {
+  const id = Number(idStr);
+  const person = calDirResults.find(p => Number(p.user_id) === id);
+  const results = document.getElementById('cal-dir-results');
+  if (person && !calSelectedParticipants.some(p => p.user_id === person.user_id)) {
+    calSelectedParticipants.push(person);
+    document.getElementById('cal-selected-participants').innerHTML = calSelectedParticipantsHtml();
+    calLiveCheck();
+  }
+  document.getElementById('cal-participant-search').value = '';
+  results.style.display = 'none'; results.innerHTML = '';
+}
+
+async function calLiveCheck() {
+  const date = document.getElementById('cal-in-date').value;
+  const start = document.getElementById('cal-in-start').value;
+  const end = document.getElementById('cal-in-end').value;
+  const ids = calSelectedParticipants.map(p => p.user_id);
+  const saveBtn = document.getElementById('cal-save-btn');
+
+  if (!date || !start || !end || !ids.length || end <= start) {
+    calConflicts = [];
+    document.getElementById('cal-conflict-banner').innerHTML = '';
+    saveBtn.disabled = false;
+    return;
+  }
+
+  const token = ++calCheckToken;
+  let conflicts = [];
+  try {
+    const res = await qsApiFetch('/api/calendar/check-availability', {
+      method: 'POST', body: JSON.stringify({ date, start_time: start, end_time: end, participant_ids: ids, exclude_meeting_id: calEditingId || undefined }),
+    });
+    conflicts = res.conflicts || [];
+  } catch { conflicts = []; }
+  if (token !== calCheckToken) return;
+  calConflicts = conflicts;
+  document.getElementById('cal-conflict-banner').innerHTML = calConflictBannerHtml();
+  saveBtn.disabled = calConflicts.length > 0;
+}
+
+async function calSubmitForm() {
+  const title = document.getElementById('cal-in-title').value.trim();
+  const date = document.getElementById('cal-in-date').value;
+  const start_time = document.getElementById('cal-in-start').value;
+  const end_time = document.getElementById('cal-in-end').value;
+  const meeting_type = document.getElementById('cal-in-type').value;
+  const motivo = document.getElementById('cal-in-motivo').value.trim();
+  const description = document.getElementById('cal-in-description').value.trim();
+
+  if (!title) return toast('error', 'Falta información', 'El nombre de la reunión es requerido');
+  if (!date || !start_time || !end_time) return toast('error', 'Falta información', 'Fecha y horario son requeridos');
+  if (end_time <= start_time) return toast('error', 'Horario inválido', 'La hora de fin debe ser posterior a la de inicio');
+  if (!calSelectedParticipants.length && !calExternalParticipants.length) return toast('error', 'Falta información', 'Selecciona al menos un participante');
+
+  const payload = {
+    title, date, start_time, end_time, meeting_type, motivo, description,
+    participants: calSelectedParticipants.map(p => ({ user_id: p.user_id })),
+    external_participants: calExternalParticipants,
+  };
+
+  try {
+    if (calEditingId) {
+      await qsApiFetch(`/api/calendar/meetings/${calEditingId}`, { method: 'PUT', body: JSON.stringify(payload) });
+      toast('success', 'Reunión actualizada', title);
+    } else {
+      await qsApiFetch('/api/calendar/meetings', { method: 'POST', body: JSON.stringify(payload) });
+      toast('success', 'Reunión programada', title);
+    }
+    calCloseForm();
+    await calLoad();
+  } catch (err) {
+    toast('error', 'No se pudo guardar', err.message || 'Error');
+  }
+}
+
+async function calCancelMeeting(id) {
+  const m = calMeetings.find(x => x.id === id);
+  if (!m || !confirm(`¿Deseas cancelar la reunión "${m.title}"? Se liberará el horario de los participantes.`)) return;
+  try {
+    await qsApiFetch(`/api/calendar/meetings/${id}/cancel`, { method: 'POST' });
+    toast('success', 'Reunión cancelada', m.title);
+    await calLoad();
+  } catch (err) { toast('error', 'Error', err.message || 'Error'); }
+}
+
+async function calDeleteMeeting(id) {
+  const m = calMeetings.find(x => x.id === id);
+  if (!m || !confirm(`¿Deseas eliminar la reunión "${m.title}"? Esta acción no se puede deshacer.`)) return;
+  try {
+    await qsApiFetch(`/api/calendar/meetings/${id}`, { method: 'DELETE' });
+    toast('success', 'Reunión eliminada', m.title);
+    await calLoad();
+  } catch (err) { toast('error', 'Error', err.message || 'Error'); }
+}
+
+function calViewMeeting(id) {
+  const m = calMeetings.find(x => x.id === id);
+  if (!m || m.visibility === 'busy_only') return;
+  const participantsHtml = (m.participants || []).map(p => p.participant_type === 'external'
+    ? `<li>${calEsc(p.external_name)} — ${(CAL_EXTERNAL_KINDS.find(k=>k[0]===p.external_kind)||[])[1] || p.external_kind} (externo)</li>`
+    : `<li>${calEsc(p.user_name || '—')}${p.user_area ? ' — ' + calEsc(p.user_area) : ''}${p.user_cargo ? ' — ' + calEsc(p.user_cargo) : ''}</li>`).join('');
+  document.getElementById('cal-modal-kicker').textContent = m.area + ' · ' + m.meeting_date;
+  document.getElementById('cal-modal-body').innerHTML = `
+    <div style="font-size:13.5px;display:flex;flex-direction:column;gap:8px">
+      <p style="font-size:16px;font-weight:700">${calEsc(m.title)}</p>
+      <p><strong>Horario:</strong> ${m.start_time.slice(0,5)} — ${m.end_time.slice(0,5)}</p>
+      ${m.meeting_type ? `<p><strong>Tipo:</strong> ${calEsc(m.meeting_type)}</p>` : ''}
+      ${m.motivo ? `<p><strong>Motivo:</strong> ${calEsc(m.motivo)}</p>` : ''}
+      ${m.description ? `<p><strong>Descripción:</strong> ${calEsc(m.description)}</p>` : ''}
+      <div><strong>Participantes:</strong><ul style="margin:4px 0 0 18px;padding:0">${participantsHtml || '<li>Sin participantes</li>'}</ul></div>
+      <p style="color:var(--text-muted)">Programada por ${calEsc(m.created_by_name || '—')}</p>
+    </div>`;
+  document.getElementById('cal-save-btn').style.display = 'none';
+  document.getElementById('cal-modal').classList.add('open');
 }
 
 // ══════════════════════════════════════════════════════
