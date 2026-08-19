@@ -764,6 +764,9 @@
     <div class="nav-item" id="nav-auditoria" data-page="auditoria" data-filter="" onclick="navigate('auditoria')" style="display:none">
       <i class="fas fa-eye fa-fw"></i> Auditoría
     </div>
+    <div class="nav-item" id="nav-ip" data-page="ip" data-filter="" onclick="navigate('ip')" style="display:none">
+      <i class="fas fa-shield-halved fa-fw"></i> IP
+    </div>
   </nav>
   <div class="sidebar-footer">
     <div class="sidebar-footer-user">
@@ -1142,6 +1145,23 @@
       </div>
     </div>
 
+    <!-- ═══════════════ IP ═══════════════ -->
+    <div class="page" id="page-ip">
+      <div class="cal-tabs" id="ip-tabs">
+        <button type="button" class="cal-tab" data-cat="observacion" onclick="ipSetCategory('observacion')">En observación</button>
+        <button type="button" class="cal-tab" data-cat="bloqueada" onclick="ipSetCategory('bloqueada')">Bloqueadas</button>
+        <button type="button" class="cal-tab" data-cat="autorizada" onclick="ipSetCategory('autorizada')">Autorizadas</button>
+        <button type="button" class="cal-tab" data-cat="sospechosa" onclick="ipSetCategory('sospechosa')">Sospechosas</button>
+      </div>
+      <div class="filters-bar" style="margin-top:16px">
+        <input id="ip-f-q" placeholder="Buscar IP..." oninput="ipFilterChange(this.value)">
+        <input id="ip-quick-add" placeholder="Agregar IP manualmente (ej. 190.12.34.56)" style="min-width:260px">
+        <button class="btn btn-danger btn-sm" onclick="ipQuickBlock()"><i class="fas fa-ban"></i> Bloquear</button>
+        <button class="btn btn-outline btn-sm" onclick="ipQuickAuthorize()"><i class="fas fa-check"></i> Autorizar</button>
+      </div>
+      <div id="ip-list"></div>
+    </div>
+
   </div><!-- /content -->
 </main>
 
@@ -1221,8 +1241,23 @@
 // ══════════════════════════════════════════════════════
 // GATE DE SESIÓN — toda la app requiere login primero
 // ══════════════════════════════════════════════════════
+/* login.html ya validó el traspaso/token contra el backend y guardó
+   authorized_modules — acá solo se confirma que incluya SOPORTE antes
+   de renderizar nada (defensa adicional; el backend igual rechaza con
+   403 cualquier llamada a /api/soporte/* si no corresponde). */
 (function requireSession() {
-  if (!localStorage.getItem('qs_token')) {
+  const token = localStorage.getItem('qs_token');
+  if (!token) { window.location.href = 'login.html'; return; }
+  try {
+    const storedUser = JSON.parse(localStorage.getItem('qs_user') || 'null');
+    if (!(storedUser?.authorized_modules || []).includes('SOPORTE')) {
+      localStorage.removeItem('qs_token');
+      localStorage.removeItem('qs_user');
+      window.location.href = 'login.html';
+    }
+  } catch (_) {
+    localStorage.removeItem('qs_token');
+    localStorage.removeItem('qs_user');
     window.location.href = 'login.html';
   }
 })();
@@ -1372,7 +1407,8 @@ const PAGE_META = {
   casos:        { title:'Gestión de Casos',   sub:'Visualiza y administra todos los reportes' },
   reportes:     { title:'Estadísticas',       sub:'Análisis y métricas del sistema de soporte' },
   trabajadores: { title:'Trabajadores',       sub:'Consulta las cuentas del equipo y restablece contraseñas' },
-  auditoria:    { title:'Auditoría',          sub:'Registro de movimientos del sistema' }
+  auditoria:    { title:'Auditoría',          sub:'Registro de movimientos del sistema' },
+  ip:           { title:'IP',                 sub:'Observación, bloqueo y autorización de direcciones IP' }
 };
 
 function navigate(page, filter) {
@@ -1388,6 +1424,7 @@ function navigate(page, filter) {
   if (page === 'reportes')  renderReportes();
   if (page === 'calendario') calRender();
   if (page === 'auditoria') audRender();
+  if (page === 'ip') ipRender();
   closeSidebar();
 }
 
@@ -2482,6 +2519,118 @@ function audLoadMore() {
 }
 
 // ══════════════════════════════════════════════════════
+// IP — observación / bloqueadas / autorizadas / sospechosas
+// (API/src/routes/security.js). Mismo público que Auditoría.
+// ══════════════════════════════════════════════════════
+const IP_CATEGORY_LABEL = { observacion:'En observación', bloqueada:'Bloqueada', autorizada:'Autorizada', sospechosa:'Sospechosa' };
+let ipCurrentCategory = 'observacion';
+let ipRows = [];
+let ipFilters = { q: '' };
+let ipQDebounce;
+
+function ipRender() {
+  document.getElementById('ip-f-q').value = ipFilters.q;
+  document.getElementById('ip-quick-add').value = '';
+  ipLoad();
+}
+
+function ipSetCategory(cat) {
+  ipCurrentCategory = cat;
+  ipLoad();
+}
+
+function ipFilterChange(value) {
+  clearTimeout(ipQDebounce);
+  ipQDebounce = setTimeout(() => { ipFilters.q = value; ipLoad(); }, 350);
+}
+
+async function ipLoad() {
+  document.querySelectorAll('#ip-tabs .cal-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.cat === ipCurrentCategory));
+  try {
+    const params = new URLSearchParams({ category: ipCurrentCategory });
+    if (ipFilters.q) params.set('q', ipFilters.q);
+    const data = await qsApiFetch('/api/security/ips?' + params.toString());
+    ipRows = data.rows;
+    ipRenderList();
+  } catch (err) {
+    document.getElementById('ip-list').innerHTML = `<div class="empty-state"><i class="fas fa-triangle-exclamation"></i><p>${calEsc(err.message || 'Error al cargar las IP')}</p></div>`;
+  }
+}
+
+function ipRenderList() {
+  const list = document.getElementById('ip-list');
+  if (!ipRows.length) {
+    list.innerHTML = `<div class="empty-state"><i class="fas fa-shield-halved"></i><h3>Sin IP en esta categoría</h3></div>`;
+    return;
+  }
+  list.innerHTML = ipRows.map(r => `
+    <div class="card" style="padding:14px 18px;margin-bottom:8px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>
+          <div style="font-weight:700;font-size:14px">${calEsc(r.ip)}</div>
+          <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px">
+            ${r.reason ? calEsc(r.reason) + ' · ' : ''}${r.attempt_count} intento(s) · ${r.failed_count} fallido(s)
+            ${r.last_seen ? ' · última actividad ' + audFmtDateTime(r.last_seen) : ''}
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
+            Actualizado ${audFmtDateTime(r.updated_at)}${r.updated_by_username ? ' por ' + calEsc(r.updated_by_username) : ''}
+            ${r.category==='bloqueada' ? (r.is_permanent ? ' · bloqueo permanente' : r.blocked_until ? ' · hasta ' + audFmtDateTime(r.blocked_until) : '') : ''}
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${r.category!=='autorizada' ? `<button class="btn btn-outline btn-sm" onclick="ipAuthorize('${calEsc(r.ip)}')"><i class="fas fa-check"></i> Autorizar</button>` : ''}
+          ${r.category!=='bloqueada' ? `<button class="btn btn-danger btn-sm" onclick="ipBlock('${calEsc(r.ip)}')"><i class="fas fa-ban"></i> Bloquear</button>` : ''}
+          ${r.category!=='sospechosa' ? `<button class="btn btn-outline btn-sm" onclick="ipMarkSuspicious('${calEsc(r.ip)}')"><i class="fas fa-triangle-exclamation"></i> Sospechosa</button>` : ''}
+          ${r.category!=='observacion' ? `<button class="btn btn-outline btn-sm" onclick="ipReset('${calEsc(r.ip)}')"><i class="fas fa-rotate-left"></i> Observación</button>` : ''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function ipUpdate(ip, category, extra) {
+  try {
+    await qsApiFetch(`/api/security/ips/${encodeURIComponent(ip)}`, {
+      method: 'PUT', body: JSON.stringify({ category, ...extra }),
+    });
+    toast('success', 'Actualizado', `${ip} → ${IP_CATEGORY_LABEL[category]}`);
+    ipLoad();
+  } catch (err) { toast('error', 'Error', err.message || 'No se pudo actualizar'); }
+}
+
+function ipBlock(ip) {
+  const reason = prompt('Motivo del bloqueo:', '');
+  if (reason === null) return;
+  const perm = confirm('¿Bloqueo permanente?\n\nAceptar = permanente\nCancelar = temporal (24 horas)');
+  const extra = perm
+    ? { is_permanent: true, reason }
+    : { is_permanent: false, reason, blocked_until: new Date(Date.now() + 24 * 3600 * 1000).toISOString() };
+  ipUpdate(ip, 'bloqueada', extra);
+}
+function ipAuthorize(ip) {
+  const reason = prompt('Motivo de la autorización (opcional):', '');
+  if (reason === null) return;
+  ipUpdate(ip, 'autorizada', { reason });
+}
+function ipMarkSuspicious(ip) {
+  const reason = prompt('Motivo (opcional):', '');
+  if (reason === null) return;
+  ipUpdate(ip, 'sospechosa', { reason });
+}
+function ipReset(ip) {
+  ipUpdate(ip, 'observacion', { reason: null });
+}
+function ipQuickBlock() {
+  const ip = document.getElementById('ip-quick-add').value.trim();
+  if (!ip) { toast('error', 'Falta la IP', 'Escribe una dirección IP primero.'); return; }
+  ipBlock(ip);
+}
+function ipQuickAuthorize() {
+  const ip = document.getElementById('ip-quick-add').value.trim();
+  if (!ip) { toast('error', 'Falta la IP', 'Escribe una dirección IP primero.'); return; }
+  ipAuthorize(ip);
+}
+
+// ══════════════════════════════════════════════════════
 // TRABAJADORES — login + contraseña maestra + lista
 // Consume la API centralizada QUBIRA (carpeta API/), NUNCA la base
 // de datos directamente. El JWT viaja en cada request via Bearer.
@@ -2854,6 +3003,8 @@ renderSidebarSession();
 document.getElementById('sf-logout-btn')?.addEventListener('click', logout);
 const navAuditoriaEl = document.getElementById('nav-auditoria');
 if (navAuditoriaEl) navAuditoriaEl.style.display = audCanView() ? '' : 'none';
+const navIpEl = document.getElementById('nav-ip');
+if (navIpEl) navIpEl.style.display = audCanView() ? '' : 'none';
 
 /* Si venimos de login.html con ?open=trabajadores, abre el panel directo
    y limpia la URL para que un refresh no lo vuelva a disparar. */
