@@ -1132,6 +1132,7 @@
         <select id="aud-f-action" onchange="audFilterChange('action_type', this.value)"></select>
         <input type="date" id="aud-f-date-from" onchange="audFilterChange('date_from', this.value)">
         <input type="date" id="aud-f-date-to" onchange="audFilterChange('date_to', this.value)">
+        <span id="aud-date-hint" style="display:none;font-size:12px;color:var(--text-muted)">Solo se puede ver el día de hoy y tu propia área</span>
         <input id="aud-f-q" placeholder="Buscar en la ruta..." oninput="audFilterChange('q', this.value)">
       </div>
       <div id="aud-list"></div>
@@ -2354,13 +2355,16 @@ let audRows = [];
 let audTotal = 0;
 let audOffset = 0;
 const AUD_PAGE_SIZE = 50;
-let audFilters = { area: '', action_type: '', date_from: audDaysAgoISO(2), date_to: '', q: '' };
+let audFilters = { area: '', action_type: '', date_from: audTodayISO(), date_to: '', q: '' };
 let audQDebounce;
+/* La decide el backend (solo ADG o nivel_acceso>=100 pueden ver otras
+   áreas / un rango de fechas distinto a hoy) — se lee de la respuesta,
+   no se asume nada del lado del cliente. */
+let audCanSeeOtherAreas = false;
 
-function audDaysAgoISO(days) {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  return d.toISOString().slice(0, 10);
+function audTodayISO() { return new Date().toISOString().slice(0, 10); }
+function audFmtDateTime(iso) {
+  return new Date(iso).toLocaleString('es-PE', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit' });
 }
 function audIsPrivileged() { return (qsUser?.nivel_acceso || 0) >= 100; }
 function audCanView() {
@@ -2369,9 +2373,15 @@ function audCanView() {
   return AUD_QUALIFYING_CARGOS.includes(String(qsUser.cargo || '').toUpperCase());
 }
 
+function audUpdateFilterVisibility() {
+  document.getElementById('aud-f-area').style.display = audCanSeeOtherAreas ? '' : 'none';
+  document.getElementById('aud-f-date-from').style.display = audCanSeeOtherAreas ? '' : 'none';
+  document.getElementById('aud-f-date-to').style.display = audCanSeeOtherAreas ? '' : 'none';
+  document.getElementById('aud-date-hint').style.display = audCanSeeOtherAreas ? 'none' : '';
+}
+
 async function audRender() {
   const areaSel = document.getElementById('aud-f-area');
-  areaSel.style.display = audIsPrivileged() ? '' : 'none';
   areaSel.innerHTML = `<option value="">Mi área</option>`
     + AUD_AREAS.map(([k,l]) => `<option value="${k}" ${audFilters.area===k?'selected':''}>${l}</option>`).join('')
     + `<option value="ALL" ${audFilters.area==='ALL'?'selected':''}>Todas las áreas</option>`;
@@ -2380,6 +2390,7 @@ async function audRender() {
   document.getElementById('aud-f-date-from').value = audFilters.date_from;
   document.getElementById('aud-f-date-to').value = audFilters.date_to;
   document.getElementById('aud-f-q').value = audFilters.q;
+  audUpdateFilterVisibility();
 
   audOffset = 0;
   await audLoad();
@@ -2392,7 +2403,7 @@ async function audLoad(append) {
   }
   try {
     const params = new URLSearchParams();
-    if (audIsPrivileged() && audFilters.area) params.set('area', audFilters.area);
+    if (audCanSeeOtherAreas && audFilters.area) params.set('area', audFilters.area);
     if (audFilters.action_type) params.set('action_type', audFilters.action_type);
     if (audFilters.date_from) params.set('date_from', audFilters.date_from);
     if (audFilters.date_to) params.set('date_to', audFilters.date_to);
@@ -2402,6 +2413,11 @@ async function audLoad(append) {
     const data = await qsApiFetch('/api/audit/logs?' + params.toString());
     audRows = append ? [...audRows, ...data.rows] : data.rows;
     audTotal = data.total;
+    audCanSeeOtherAreas = !!data.canSeeOtherAreas;
+    if (!audCanSeeOtherAreas) { audFilters.date_from = audTodayISO(); audFilters.date_to = ''; audFilters.area = ''; }
+    audUpdateFilterVisibility();
+    document.getElementById('aud-f-date-from').value = audFilters.date_from;
+    document.getElementById('aud-f-date-to').value = audFilters.date_to;
     audRenderList();
   } catch (err) {
     document.getElementById('aud-list').innerHTML = `<div class="empty-state"><i class="fas fa-triangle-exclamation"></i><p>${calEsc(err.message || 'Error al cargar la auditoría')}</p></div>`;
@@ -2416,14 +2432,17 @@ function audRenderList() {
     document.getElementById('aud-list').innerHTML = `<div class="empty-state"><i class="fas fa-eye"></i><h3>Sin movimientos</h3><p>No hay actividad registrada en este rango.</p></div>`;
     return;
   }
-  document.getElementById('aud-list').innerHTML = audRows.map(r => `
-    <div class="card" style="padding:12px 16px;display:grid;grid-template-columns:140px 1fr 90px 110px 1fr;gap:12px;align-items:center;margin-bottom:8px">
-      <span style="font-size:11.5px;color:var(--text-muted)">${fmtShort(r.created_at)}</span>
+  document.getElementById('aud-list').innerHTML = audRows.map(r => {
+    const path = r.full_path || r.path;
+    return `
+    <div class="card" style="padding:12px 16px;display:grid;grid-template-columns:150px 1fr 90px 110px 1fr;gap:12px;align-items:center;margin-bottom:8px">
+      <span style="font-size:11.5px;color:var(--text-muted)">${audFmtDateTime(r.created_at)}</span>
       <span style="font-weight:600">${calEsc(r.user_name || r.username || '—')}</span>
       <span style="font-size:11.5px;color:var(--text-muted)">${calEsc(r.area || '—')}</span>
       <span class="badge" style="background:rgba(79,70,229,.12);color:var(--accent);width:fit-content">${calEsc(AUD_ACTION_LABEL[r.action_type] || r.action_type)}</span>
-      <span style="font-size:11.5px;color:var(--text-muted)" title="${calEsc(r.path)}">${calEsc(r.description)} · ${calEsc(r.method)} ${calEsc(r.path)}</span>
-    </div>`).join('');
+      <span style="font-size:11.5px;color:var(--text-muted)" title="${calEsc(path)}">${calEsc(r.description)} · ${calEsc(r.method)} ${calEsc(path)}</span>
+    </div>`;
+  }).join('');
 }
 
 function audFilterChange(key, value) {
