@@ -761,6 +761,9 @@
     <div class="nav-item" data-page="trabajadores" data-filter="" onclick="openTrabajadores()">
       <i class="fas fa-users-cog fa-fw"></i> Trabajadores
     </div>
+    <div class="nav-item" id="nav-auditoria" data-page="auditoria" data-filter="" onclick="navigate('auditoria')" style="display:none">
+      <i class="fas fa-eye fa-fw"></i> Auditoría
+    </div>
   </nav>
   <div class="sidebar-footer">
     <div class="sidebar-footer-user">
@@ -1122,6 +1125,22 @@
       </div>
     </div>
 
+    <!-- ═══════════════ AUDITORÍA ═══════════════ -->
+    <div class="page" id="page-auditoria">
+      <div class="filters-bar" id="aud-filters">
+        <select id="aud-f-area" style="display:none" onchange="audFilterChange('area', this.value)"></select>
+        <select id="aud-f-action" onchange="audFilterChange('action_type', this.value)"></select>
+        <input type="date" id="aud-f-date-from" onchange="audFilterChange('date_from', this.value)">
+        <input type="date" id="aud-f-date-to" onchange="audFilterChange('date_to', this.value)">
+        <input id="aud-f-q" placeholder="Buscar en la ruta..." oninput="audFilterChange('q', this.value)">
+      </div>
+      <div id="aud-list"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;font-size:12.5px;color:var(--text-muted)">
+        <span id="aud-count"></span>
+        <button class="btn btn-outline btn-sm" id="aud-load-more" style="display:none" onclick="audLoadMore()">Cargar más</button>
+      </div>
+    </div>
+
   </div><!-- /content -->
 </main>
 
@@ -1351,7 +1370,8 @@ const PAGE_META = {
   calendario:   { title:'Calendario',         sub:'Reuniones de Soporte e interconexión con otras áreas' },
   casos:        { title:'Gestión de Casos',   sub:'Visualiza y administra todos los reportes' },
   reportes:     { title:'Estadísticas',       sub:'Análisis y métricas del sistema de soporte' },
-  trabajadores: { title:'Trabajadores',       sub:'Consulta las cuentas del equipo y restablece contraseñas' }
+  trabajadores: { title:'Trabajadores',       sub:'Consulta las cuentas del equipo y restablece contraseñas' },
+  auditoria:    { title:'Auditoría',          sub:'Registro de movimientos del sistema' }
 };
 
 function navigate(page, filter) {
@@ -1366,6 +1386,7 @@ function navigate(page, filter) {
   if (page === 'nuevo')     resetForm();
   if (page === 'reportes')  renderReportes();
   if (page === 'calendario') calRender();
+  if (page === 'auditoria') audRender();
   closeSidebar();
 }
 
@@ -2321,6 +2342,107 @@ function calViewMeeting(id) {
 }
 
 // ══════════════════════════════════════════════════════
+// AUDITORÍA — registro de movimientos del sistema
+// (API/src/routes/audit.js). Solo visible para cargos
+// Supervisor/Coordinador/Gerente o nivel_acceso>=100.
+// ══════════════════════════════════════════════════════
+const AUD_AREAS = [['SOPORTE','Soporte'],['ADG','ADG'],['TI','TI'],['RRHH','RR. HH.']];
+const AUD_ACTION_LABEL = { view:'Consultó', create:'Creó', update:'Actualizó', delete:'Eliminó', login:'Inició sesión', logout:'Cerró sesión' };
+const AUD_QUALIFYING_CARGOS = ['SUPERVISOR', 'COORDINADOR', 'GERENTE'];
+
+let audRows = [];
+let audTotal = 0;
+let audOffset = 0;
+const AUD_PAGE_SIZE = 50;
+let audFilters = { area: '', action_type: '', date_from: audDaysAgoISO(2), date_to: '', q: '' };
+let audQDebounce;
+
+function audDaysAgoISO(days) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+function audIsPrivileged() { return (qsUser?.nivel_acceso || 0) >= 100; }
+function audCanView() {
+  if (!qsUser) return false;
+  if (audIsPrivileged()) return true;
+  return AUD_QUALIFYING_CARGOS.includes(String(qsUser.cargo || '').toUpperCase());
+}
+
+async function audRender() {
+  const areaSel = document.getElementById('aud-f-area');
+  areaSel.style.display = audIsPrivileged() ? '' : 'none';
+  areaSel.innerHTML = `<option value="">Mi área</option>`
+    + AUD_AREAS.map(([k,l]) => `<option value="${k}" ${audFilters.area===k?'selected':''}>${l}</option>`).join('')
+    + `<option value="ALL" ${audFilters.area==='ALL'?'selected':''}>Todas las áreas</option>`;
+  const actionSel = document.getElementById('aud-f-action');
+  actionSel.innerHTML = '<option value="">Todas las acciones</option>' + Object.entries(AUD_ACTION_LABEL).map(([k,l]) => `<option value="${k}" ${audFilters.action_type===k?'selected':''}>${l}</option>`).join('');
+  document.getElementById('aud-f-date-from').value = audFilters.date_from;
+  document.getElementById('aud-f-date-to').value = audFilters.date_to;
+  document.getElementById('aud-f-q').value = audFilters.q;
+
+  audOffset = 0;
+  await audLoad();
+}
+
+async function audLoad(append) {
+  if (!audCanView()) {
+    document.getElementById('aud-list').innerHTML = `<div class="empty-state"><i class="fas fa-eye-slash"></i><h3>Sin acceso</h3><p>No tienes permiso para ver la auditoría.</p></div>`;
+    return;
+  }
+  try {
+    const params = new URLSearchParams();
+    if (audIsPrivileged() && audFilters.area) params.set('area', audFilters.area);
+    if (audFilters.action_type) params.set('action_type', audFilters.action_type);
+    if (audFilters.date_from) params.set('date_from', audFilters.date_from);
+    if (audFilters.date_to) params.set('date_to', audFilters.date_to);
+    if (audFilters.q) params.set('q', audFilters.q);
+    params.set('limit', AUD_PAGE_SIZE);
+    params.set('offset', audOffset);
+    const data = await qsApiFetch('/api/audit/logs?' + params.toString());
+    audRows = append ? [...audRows, ...data.rows] : data.rows;
+    audTotal = data.total;
+    audRenderList();
+  } catch (err) {
+    document.getElementById('aud-list').innerHTML = `<div class="empty-state"><i class="fas fa-triangle-exclamation"></i><p>${calEsc(err.message || 'Error al cargar la auditoría')}</p></div>`;
+  }
+}
+
+function audRenderList() {
+  document.getElementById('aud-count').textContent = `${audRows.length} de ${audTotal}`;
+  document.getElementById('aud-load-more').style.display = audRows.length < audTotal ? 'inline-flex' : 'none';
+
+  if (!audRows.length) {
+    document.getElementById('aud-list').innerHTML = `<div class="empty-state"><i class="fas fa-eye"></i><h3>Sin movimientos</h3><p>No hay actividad registrada en este rango.</p></div>`;
+    return;
+  }
+  document.getElementById('aud-list').innerHTML = audRows.map(r => `
+    <div class="card" style="padding:12px 16px;display:grid;grid-template-columns:140px 1fr 90px 110px 1fr;gap:12px;align-items:center;margin-bottom:8px">
+      <span style="font-size:11.5px;color:var(--text-muted)">${fmtShort(r.created_at)}</span>
+      <span style="font-weight:600">${calEsc(r.user_name || r.username || '—')}</span>
+      <span style="font-size:11.5px;color:var(--text-muted)">${calEsc(r.area || '—')}</span>
+      <span class="badge" style="background:rgba(79,70,229,.12);color:var(--accent);width:fit-content">${calEsc(AUD_ACTION_LABEL[r.action_type] || r.action_type)}</span>
+      <span style="font-size:11.5px;color:var(--text-muted)" title="${calEsc(r.path)}">${calEsc(r.description)} · ${calEsc(r.method)} ${calEsc(r.path)}</span>
+    </div>`).join('');
+}
+
+function audFilterChange(key, value) {
+  clearTimeout(audQDebounce);
+  if (key === 'q') {
+    audQDebounce = setTimeout(() => { audFilters.q = value; audOffset = 0; audLoad(); }, 350);
+  } else {
+    audFilters[key] = value;
+    audOffset = 0;
+    audLoad();
+  }
+}
+
+function audLoadMore() {
+  audOffset += AUD_PAGE_SIZE;
+  audLoad(true);
+}
+
+// ══════════════════════════════════════════════════════
 // TRABAJADORES — login + contraseña maestra + lista
 // Consume la API centralizada QUBIRA (carpeta API/), NUNCA la base
 // de datos directamente. El JWT viaja en cada request via Bearer.
@@ -2691,6 +2813,8 @@ updateNavBadges();
 renderDashboard();
 renderSidebarSession();
 document.getElementById('sf-logout-btn')?.addEventListener('click', logout);
+const navAuditoriaEl = document.getElementById('nav-auditoria');
+if (navAuditoriaEl) navAuditoriaEl.style.display = audCanView() ? '' : 'none';
 
 /* Si venimos de login.html con ?open=trabajadores, abre el panel directo
    y limpia la URL para que un refresh no lo vuelva a disparar. */
