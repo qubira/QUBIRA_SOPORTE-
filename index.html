@@ -137,6 +137,11 @@
       border-color: rgba(239,68,68,.35);
       color: #fca5a5;
     }
+    .sidebar-switch-btn:hover {
+      background: rgba(79,70,229,.18) !important;
+      border-color: rgba(129,140,248,.4) !important;
+      color: #fff !important;
+    }
     .pulse-dot {
       display: inline-block;
       width: 8px; height: 8px;
@@ -776,9 +781,14 @@
         <div class="sf-user-role" id="sf-role">—</div>
       </div>
     </div>
-    <button class="sidebar-logout-btn" id="sf-logout-btn" title="Cerrar sesión">
-      <i class="fas fa-sign-out-alt"></i> Cerrar sesión
-    </button>
+    <div style="display:flex;gap:8px">
+      <button class="sidebar-logout-btn sidebar-switch-btn" id="sf-switch-btn" title="Cambiar de módulo">
+        <i class="fas fa-th-large"></i> Módulos
+      </button>
+      <button class="sidebar-logout-btn" id="sf-logout-btn" title="Cerrar sesión">
+        <i class="fas fa-sign-out-alt"></i> Cerrar sesión
+      </button>
+    </div>
     <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
       <span class="pulse-dot"></span> Sistema activo
     </div>
@@ -2642,6 +2652,10 @@ const QS_API_BASE = (location.hostname === 'localhost' || location.hostname === 
   ? 'http://localhost:4000'
   : 'https://api-qubira.onrender.com';
 
+const CENTRAL_MODULO_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://localhost:5515/modulo.html'
+  : 'https://qubira-login.vercel.app/modulo.html';
+
 let qsToken   = localStorage.getItem('qs_token') || null;
 let qsUser    = JSON.parse(localStorage.getItem('qs_user') || 'null');
 
@@ -3001,6 +3015,7 @@ updateNavBadges();
 renderDashboard();
 renderSidebarSession();
 document.getElementById('sf-logout-btn')?.addEventListener('click', logout);
+document.getElementById('sf-switch-btn')?.addEventListener('click', () => { window.location.href = CENTRAL_MODULO_URL; });
 const navAuditoriaEl = document.getElementById('nav-auditoria');
 if (navAuditoriaEl) navAuditoriaEl.style.display = audCanView() ? '' : 'none';
 const navIpEl = document.getElementById('nav-ip');
