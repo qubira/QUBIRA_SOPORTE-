@@ -762,6 +762,9 @@
     <div class="nav-item" data-page="reportes" data-filter="" onclick="navigate('reportes')">
       <i class="fas fa-chart-bar fa-fw"></i> Estadísticas
     </div>
+    <div class="nav-item" id="nav-visitas" data-page="visitas" data-filter="" onclick="navigate('visitas')" style="display:none">
+      <i class="fas fa-globe fa-fw"></i> Visitas
+    </div>
     <div class="nav-section">Administración</div>
     <div class="nav-item" data-page="trabajadores" data-filter="" onclick="openTrabajadores()">
       <i class="fas fa-users-cog fa-fw"></i> Trabajadores
@@ -1172,6 +1175,46 @@
       <div id="ip-list"></div>
     </div>
 
+    <!-- ═══════════════ VISITAS ═══════════════ -->
+    <div class="page" id="page-visitas">
+      <div class="filters-bar">
+        <span style="font-size:13px;color:var(--text-muted)">Rango:</span>
+        <select id="vis-range" onchange="visSetDays(this.value)">
+          <option value="7">Últimos 7 días</option>
+          <option value="14">Últimos 14 días</option>
+          <option value="30" selected>Últimos 30 días</option>
+          <option value="90">Últimos 90 días</option>
+        </select>
+      </div>
+      <div class="stats-grid" id="vis-stats-grid" style="margin-top:12px"></div>
+      <div class="dash-2col" style="margin-top:18px">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="fas fa-chart-line" style="color:var(--accent)"></i> Vistas por día</h3></div>
+          <div id="vis-chart-days" class="chart-container"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="fas fa-trophy" style="color:var(--warning)"></i> Casos de éxito más clickeados</h3></div>
+          <div id="vis-chart-cases" class="chart-container"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:18px">
+        <div class="card-header"><h3 class="card-title"><i class="fas fa-map-signs" style="color:var(--success)"></i> Páginas más vistas</h3></div>
+        <div id="vis-chart-pages" class="chart-container"></div>
+      </div>
+
+      <div class="filters-bar" style="margin-top:22px">
+        <select id="vis-f-type" onchange="visFilterChange('event_type', this.value)"></select>
+        <input type="date" id="vis-f-date-from" onchange="visFilterChange('date_from', this.value)">
+        <input type="date" id="vis-f-date-to" onchange="visFilterChange('date_to', this.value)">
+        <input id="vis-f-q" placeholder="Buscar caso, página, origen..." oninput="visFilterChange('q', this.value)">
+      </div>
+      <div id="vis-list"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;font-size:12.5px;color:var(--text-muted)">
+        <span id="vis-count"></span>
+        <button class="btn btn-outline btn-sm" id="vis-load-more" style="display:none" onclick="visLoadMore()">Cargar más</button>
+      </div>
+    </div>
+
   </div><!-- /content -->
 </main>
 
@@ -1418,7 +1461,8 @@ const PAGE_META = {
   reportes:     { title:'Estadísticas',       sub:'Análisis y métricas del sistema de soporte' },
   trabajadores: { title:'Trabajadores',       sub:'Consulta las cuentas del equipo y restablece contraseñas' },
   auditoria:    { title:'Auditoría',          sub:'Registro de movimientos del sistema' },
-  ip:           { title:'IP',                 sub:'Observación, bloqueo y autorización de direcciones IP' }
+  ip:           { title:'IP',                 sub:'Observación, bloqueo y autorización de direcciones IP' },
+  visitas:      { title:'Visitas',            sub:'Cómo interactúan los visitantes con el sitio público de QUBIRA' }
 };
 
 function navigate(page, filter) {
@@ -1435,6 +1479,7 @@ function navigate(page, filter) {
   if (page === 'calendario') calRender();
   if (page === 'auditoria') audRender();
   if (page === 'ip') ipRender();
+  if (page === 'visitas') visRender();
   closeSidebar();
 }
 
@@ -2641,6 +2686,151 @@ function ipQuickAuthorize() {
 }
 
 // ══════════════════════════════════════════════════════
+// VISITAS — historial e interacciones del sitio público QUBIRA
+// (API/src/routes/analytics.js). Mismo público que Auditoría/IP:
+// cargo Supervisor/Coordinador/Gerente, o nivel_acceso>=100 —
+// reutiliza audCanView(), no hace falta redefinirlo.
+// ══════════════════════════════════════════════════════
+const VIS_EVENT_TYPES = [
+  ['page_view', 'Vista de página'],
+  ['case_click', 'Click en caso de éxito'],
+  ['whatsapp_click', 'Click en WhatsApp'],
+  ['chatbot_open', 'Abrió el chatbot'],
+  ['chatbot_message', 'Mensaje al chatbot'],
+];
+let visDays = 30;
+let visSummary = null;
+let visRows = [];
+let visTotal = 0;
+let visOffset = 0;
+const VIS_PAGE_SIZE = 50;
+let visFilters = { event_type: '', date_from: '', date_to: '', q: '' };
+let visQDebounce;
+
+function visSetDays(v) { visDays = Number(v); visLoad(); }
+
+async function visRender() {
+  if (!audCanView()) {
+    document.getElementById('vis-stats-grid').innerHTML = '';
+    document.getElementById('vis-list').innerHTML = `<div class="empty-state"><i class="fas fa-eye-slash"></i><h3>Sin acceso</h3><p>No tienes permiso para ver las estadísticas del sitio.</p></div>`;
+    return;
+  }
+  const typeSel = document.getElementById('vis-f-type');
+  typeSel.innerHTML = '<option value="">Todos los eventos</option>' + VIS_EVENT_TYPES.map(([k,l]) => `<option value="${k}" ${visFilters.event_type===k?'selected':''}>${l}</option>`).join('');
+  document.getElementById('vis-f-date-from').value = visFilters.date_from;
+  document.getElementById('vis-f-date-to').value = visFilters.date_to;
+  document.getElementById('vis-f-q').value = visFilters.q;
+  document.getElementById('vis-range').value = String(visDays);
+  visOffset = 0;
+  await visLoad();
+}
+
+async function visLoad(append) {
+  try {
+    const sp = new URLSearchParams(); sp.set('days', visDays);
+    const summary = await qsApiFetch('/api/analytics/summary?' + sp.toString());
+    visSummary = summary;
+    visRenderKpis();
+    visRenderCharts();
+  } catch (err) {
+    document.getElementById('vis-stats-grid').innerHTML = `<div class="empty-state"><i class="fas fa-triangle-exclamation"></i><p>${calEsc(err.message || 'No se pudo cargar el resumen')}</p></div>`;
+  }
+  try {
+    const params = new URLSearchParams();
+    if (visFilters.event_type) params.set('event_type', visFilters.event_type);
+    if (visFilters.date_from)  params.set('date_from', visFilters.date_from);
+    if (visFilters.date_to)    params.set('date_to', visFilters.date_to);
+    if (visFilters.q)          params.set('q', visFilters.q);
+    params.set('limit', VIS_PAGE_SIZE);
+    params.set('offset', visOffset);
+    const data = await qsApiFetch('/api/analytics/events?' + params.toString());
+    visRows = append ? [...visRows, ...data.rows] : data.rows;
+    visTotal = data.total;
+    visRenderTable();
+  } catch (err) {
+    document.getElementById('vis-list').innerHTML = `<div class="empty-state"><i class="fas fa-triangle-exclamation"></i><p>${calEsc(err.message || 'No se pudo cargar el historial')}</p></div>`;
+  }
+}
+
+function visRenderKpis() {
+  const s = visSummary;
+  document.getElementById('vis-stats-grid').innerHTML = `
+    ${sc('Vistas de página',           s.total_views,       'fa-eye',            'var(--accent)',  'rgba(79,70,229,.1)')}
+    ${sc('Visitantes únicos',          s.unique_visitors,   'fa-user-friends',   'var(--success)', 'rgba(16,185,129,.1)')}
+    ${sc('Clicks en casos de éxito',   s.case_clicks,       'fa-arrow-up-right-from-square', 'var(--warning)', 'rgba(245,158,11,.1)')}
+    ${sc('Clicks en WhatsApp',         s.whatsapp_clicks,   'fa-comment-dots',   'var(--success)', 'rgba(16,185,129,.1)')}
+    ${sc('Chatbot abierto',            s.chatbot_opens,     'fa-robot',          'var(--purple)',  'rgba(139,92,246,.1)')}
+    ${sc('Preguntas al chatbot',       s.chatbot_messages,  'fa-comments',       'var(--purple)',  'rgba(139,92,246,.1)')}
+  `;
+}
+
+function visRenderCharts() {
+  const s = visSummary;
+  const days = (s.views_by_day || []).map(d => ({
+    l: (() => { const [y,m,dd] = d.dia.split('-'); return `${dd}/${m}`; })(),
+    n: d.total, c: 'var(--accent)',
+  }));
+  barChart('vis-chart-days', days.length ? days : [{ l: 'Sin datos', n: 0, c: 'var(--accent)' }]);
+
+  const palette = ['var(--accent)', 'var(--info)', 'var(--success)', 'var(--warning)', 'var(--danger)', 'var(--purple)'];
+  const cases = (s.top_cases || []).map((c, i) => ({ l: c.case_name, n: c.total, c: palette[i % palette.length] }));
+  barChart('vis-chart-cases', cases.length ? cases : [{ l: 'Sin clicks todavía', n: 0, c: 'var(--accent)' }]);
+
+  const pages = (s.top_pages || []).map((p, i) => ({ l: p.page, n: p.total, c: palette[i % palette.length] }));
+  barChart('vis-chart-pages', pages.length ? pages : [{ l: 'Sin datos', n: 0, c: 'var(--accent)' }]);
+}
+
+const VIS_EVENT_BADGE = {
+  page_view: 'background:rgba(107,114,128,.12);color:#6b7280', case_click: 'background:rgba(16,185,129,.12);color:var(--success)',
+  whatsapp_click: 'background:rgba(16,185,129,.12);color:var(--success)', chatbot_open: 'background:rgba(139,92,246,.12);color:var(--purple)',
+  chatbot_message: 'background:rgba(139,92,246,.12);color:var(--purple)',
+};
+
+function visReferrerHost(ref) {
+  if (!ref) return '—';
+  try { return new URL(ref).hostname; } catch { return ref.slice(0, 40); }
+}
+
+function visRenderTable() {
+  document.getElementById('vis-count').textContent = `${visRows.length} de ${visTotal}`;
+  document.getElementById('vis-load-more').style.display = visRows.length < visTotal ? 'inline-flex' : 'none';
+
+  if (!visRows.length) {
+    document.getElementById('vis-list').innerHTML = `<div class="empty-state"><i class="fas fa-chart-bar"></i><h3>Sin eventos</h3><p>No hay eventos registrados en este rango.</p></div>`;
+    return;
+  }
+  document.getElementById('vis-list').innerHTML = visRows.map(r => {
+    const detail = r.case_name || r.label || '—';
+    const detailShort = detail.length > 60 ? detail.slice(0, 60) + '…' : detail;
+    return `
+    <div class="card" style="padding:12px 16px;display:grid;grid-template-columns:150px 170px 1fr 120px 130px 110px;gap:12px;align-items:center;margin-bottom:8px">
+      <span style="font-size:11.5px;color:var(--text-muted)">${audFmtDateTime(r.created_at)}</span>
+      <span class="badge" style="${VIS_EVENT_BADGE[r.event_type]||''};width:fit-content">${calEsc(r.event_label)}</span>
+      <span style="font-size:11.5px;color:var(--text)" title="${calEsc(detail)}">${calEsc(detailShort)}</span>
+      <span style="font-size:11.5px;color:var(--text-muted)">${calEsc(r.page || '—')}</span>
+      <span style="font-size:11.5px;color:var(--text-muted)" title="${calEsc(r.referrer||'')}">${calEsc(visReferrerHost(r.referrer))}</span>
+      <span style="font-size:11px;color:var(--text-muted)">${calEsc(r.ip_address || '—')}</span>
+    </div>`;
+  }).join('');
+}
+
+function visFilterChange(key, value) {
+  clearTimeout(visQDebounce);
+  if (key === 'q') {
+    visQDebounce = setTimeout(() => { visFilters.q = value; visOffset = 0; visLoad(); }, 350);
+  } else {
+    visFilters[key] = value;
+    visOffset = 0;
+    visLoad();
+  }
+}
+
+function visLoadMore() {
+  visOffset += VIS_PAGE_SIZE;
+  visLoad(true);
+}
+
+// ══════════════════════════════════════════════════════
 // TRABAJADORES — login + contraseña maestra + lista
 // Consume la API centralizada QUBIRA (carpeta API/), NUNCA la base
 // de datos directamente. El JWT viaja en cada request via Bearer.
@@ -3020,6 +3210,8 @@ const navAuditoriaEl = document.getElementById('nav-auditoria');
 if (navAuditoriaEl) navAuditoriaEl.style.display = audCanView() ? '' : 'none';
 const navIpEl = document.getElementById('nav-ip');
 if (navIpEl) navIpEl.style.display = audCanView() ? '' : 'none';
+const navVisitasEl = document.getElementById('nav-visitas');
+if (navVisitasEl) navVisitasEl.style.display = audCanView() ? '' : 'none';
 
 /* Si venimos de login.html con ?open=trabajadores, abre el panel directo
    y limpia la URL para que un refresh no lo vuelva a disparar. */
