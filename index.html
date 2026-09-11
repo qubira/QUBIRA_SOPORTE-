@@ -1197,21 +1197,52 @@
           <div id="vis-chart-cases" class="chart-container"></div>
         </div>
       </div>
+      <div class="dash-2col" style="margin-top:18px">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="fas fa-mobile-screen-button" style="color:var(--accent)"></i> Dispositivos</h3></div>
+          <div id="vis-chart-devices" class="chart-container"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="fas fa-map-signs" style="color:var(--success)"></i> Páginas más vistas</h3></div>
+          <div id="vis-chart-pages" class="chart-container"></div>
+        </div>
+      </div>
       <div class="card" style="margin-top:18px">
-        <div class="card-header"><h3 class="card-title"><i class="fas fa-map-signs" style="color:var(--success)"></i> Páginas más vistas</h3></div>
-        <div id="vis-chart-pages" class="chart-container"></div>
+        <div class="card-header"><h3 class="card-title"><i class="fas fa-arrow-right-to-bracket" style="color:var(--purple)"></i> De dónde llegan</h3></div>
+        <div id="vis-chart-referrers" class="chart-container"></div>
       </div>
 
-      <div class="filters-bar" style="margin-top:22px">
-        <select id="vis-f-type" onchange="visFilterChange('event_type', this.value)"></select>
-        <input type="date" id="vis-f-date-from" onchange="visFilterChange('date_from', this.value)">
-        <input type="date" id="vis-f-date-to" onchange="visFilterChange('date_to', this.value)">
-        <input id="vis-f-q" placeholder="Buscar caso, página, origen..." oninput="visFilterChange('q', this.value)">
+      <div style="display:flex;gap:8px;margin-top:22px">
+        <button class="cal-tab active" id="vis-tab-sessions" onclick="visSwitchTab('sessions')"><i class="fas fa-route"></i> Sesiones</button>
+        <button class="cal-tab" id="vis-tab-events" onclick="visSwitchTab('events')"><i class="fas fa-list"></i> Eventos crudos</button>
       </div>
-      <div id="vis-list"></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;font-size:12.5px;color:var(--text-muted)">
-        <span id="vis-count"></span>
-        <button class="btn btn-outline btn-sm" id="vis-load-more" style="display:none" onclick="visLoadMore()">Cargar más</button>
+
+      <div id="vis-sessions-panel">
+        <div class="filters-bar" style="margin-top:14px">
+          <input id="vis-s-q" placeholder="Buscar caso, página, origen..." oninput="visSessionFilterChange('q', this.value)">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-muted);cursor:pointer">
+            <input type="checkbox" id="vis-s-leads" onchange="visSessionFilterChange('only_leads', this.checked)"> Solo leads calientes 🔥
+          </label>
+        </div>
+        <div id="vis-sessions-list"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;font-size:12.5px;color:var(--text-muted)">
+          <span id="vis-sessions-count"></span>
+          <button class="btn btn-outline btn-sm" id="vis-sessions-load-more" style="display:none" onclick="visSessionsLoadMore()">Cargar más</button>
+        </div>
+      </div>
+
+      <div id="vis-events-panel" style="display:none">
+        <div class="filters-bar" style="margin-top:14px">
+          <select id="vis-f-type" onchange="visFilterChange('event_type', this.value)"></select>
+          <input type="date" id="vis-f-date-from" onchange="visFilterChange('date_from', this.value)">
+          <input type="date" id="vis-f-date-to" onchange="visFilterChange('date_to', this.value)">
+          <input id="vis-f-q" placeholder="Buscar caso, página, origen..." oninput="visFilterChange('q', this.value)">
+        </div>
+        <div id="vis-list"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;font-size:12.5px;color:var(--text-muted)">
+          <span id="vis-count"></span>
+          <button class="btn btn-outline btn-sm" id="vis-load-more" style="display:none" onclick="visLoadMore()">Cargar más</button>
+        </div>
       </div>
     </div>
 
@@ -1250,6 +1281,23 @@
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="calCloseForm()">Cancelar</button>
       <button class="btn btn-primary" id="cal-save-btn" onclick="calSubmitForm()"><i class="fas fa-save"></i> Guardar reunión</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL RECORRIDO DEL VISITANTE (VISITAS) ═══════════════ -->
+<div class="modal-overlay" id="vis-timeline-modal">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Sesión de visitante</div>
+        <div style="font-size:18px;font-weight:700">Recorrido del visitante</div>
+      </div>
+      <button class="close-btn" onclick="visCloseTimeline()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body" id="vis-timeline-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="visCloseTimeline()">Cerrar</button>
     </div>
   </div>
 </div>
@@ -2700,6 +2748,7 @@ const VIS_EVENT_TYPES = [
 ];
 let visDays = 30;
 let visSummary = null;
+let visTab = 'sessions'; // 'sessions' | 'events'
 let visRows = [];
 let visTotal = 0;
 let visOffset = 0;
@@ -2707,12 +2756,35 @@ const VIS_PAGE_SIZE = 50;
 let visFilters = { event_type: '', date_from: '', date_to: '', q: '' };
 let visQDebounce;
 
+let visSessions = [];
+let visSessionsTotal = 0;
+let visSessionsOffset = 0;
+const VIS_SESSIONS_PAGE_SIZE = 30;
+let visSessionFilters = { q: '', only_leads: false };
+let visSessionsQDebounce;
+
+const VIS_DEVICE_ICON = { 'Móvil': 'fa-mobile-screen-button', 'Tablet': 'fa-tablet-screen-button', 'Escritorio': 'fa-desktop', 'Desconocido': 'fa-globe' };
+const VIS_TIMELINE_ICON = {
+  page_view: 'fa-eye', case_click: 'fa-arrow-up-right-from-square', whatsapp_click: 'fa-comment-dots',
+  chatbot_open: 'fa-robot', chatbot_message: 'fa-comments',
+};
+
 function visSetDays(v) { visDays = Number(v); visLoad(); }
+
+function visSwitchTab(tab) {
+  if (visTab === tab) return;
+  visTab = tab;
+  document.getElementById('vis-tab-sessions').classList.toggle('active', tab === 'sessions');
+  document.getElementById('vis-tab-events').classList.toggle('active', tab === 'events');
+  document.getElementById('vis-sessions-panel').style.display = tab === 'sessions' ? '' : 'none';
+  document.getElementById('vis-events-panel').style.display = tab === 'events' ? '' : 'none';
+  if (tab === 'events' && visRows.length === 0 && visTotal === 0) visLoad();
+}
 
 async function visRender() {
   if (!audCanView()) {
     document.getElementById('vis-stats-grid').innerHTML = '';
-    document.getElementById('vis-list').innerHTML = `<div class="empty-state"><i class="fas fa-eye-slash"></i><h3>Sin acceso</h3><p>No tienes permiso para ver las estadísticas del sitio.</p></div>`;
+    document.getElementById('vis-sessions-list').innerHTML = `<div class="empty-state"><i class="fas fa-eye-slash"></i><h3>Sin acceso</h3><p>No tienes permiso para ver las estadísticas del sitio.</p></div>`;
     return;
   }
   const typeSel = document.getElementById('vis-f-type');
@@ -2721,7 +2793,10 @@ async function visRender() {
   document.getElementById('vis-f-date-to').value = visFilters.date_to;
   document.getElementById('vis-f-q').value = visFilters.q;
   document.getElementById('vis-range').value = String(visDays);
+  document.getElementById('vis-s-q').value = visSessionFilters.q;
+  document.getElementById('vis-s-leads').checked = visSessionFilters.only_leads;
   visOffset = 0;
+  visSessionsOffset = 0;
   await visLoad();
 }
 
@@ -2735,6 +2810,28 @@ async function visLoad(append) {
   } catch (err) {
     document.getElementById('vis-stats-grid').innerHTML = `<div class="empty-state"><i class="fas fa-triangle-exclamation"></i><p>${calEsc(err.message || 'No se pudo cargar el resumen')}</p></div>`;
   }
+  await visLoadSessions(append);
+  if (visTab === 'events') await visLoadEvents(append);
+}
+
+async function visLoadSessions(append) {
+  try {
+    const params = new URLSearchParams();
+    params.set('days', visDays);
+    if (visSessionFilters.q) params.set('q', visSessionFilters.q);
+    if (visSessionFilters.only_leads) params.set('only_leads', '1');
+    params.set('limit', VIS_SESSIONS_PAGE_SIZE);
+    params.set('offset', visSessionsOffset);
+    const data = await qsApiFetch('/api/analytics/sessions?' + params.toString());
+    visSessions = append ? [...visSessions, ...data.rows] : data.rows;
+    visSessionsTotal = data.total;
+    visRenderSessions();
+  } catch (err) {
+    document.getElementById('vis-sessions-list').innerHTML = `<div class="empty-state"><i class="fas fa-triangle-exclamation"></i><p>${calEsc(err.message || 'No se pudo cargar las sesiones')}</p></div>`;
+  }
+}
+
+async function visLoadEvents(append) {
   try {
     const params = new URLSearchParams();
     if (visFilters.event_type) params.set('event_type', visFilters.event_type);
@@ -2757,9 +2854,11 @@ function visRenderKpis() {
   document.getElementById('vis-stats-grid').innerHTML = `
     ${sc('Vistas de página',           s.total_views,       'fa-eye',            'var(--accent)',  'rgba(79,70,229,.1)')}
     ${sc('Visitantes únicos',          s.unique_visitors,   'fa-user-friends',   'var(--success)', 'rgba(16,185,129,.1)')}
-    ${sc('Clicks en casos de éxito',   s.case_clicks,       'fa-arrow-up-right-from-square', 'var(--warning)', 'rgba(245,158,11,.1)')}
+    ${sc('Leads calientes',            s.hot_leads || 0,    'fa-fire',           'var(--danger)',  'rgba(239,68,68,.1)')}
     ${sc('Clicks en WhatsApp',         s.whatsapp_clicks,   'fa-comment-dots',   'var(--success)', 'rgba(16,185,129,.1)')}
-    ${sc('Chatbot abierto',            s.chatbot_opens,     'fa-robot',          'var(--purple)',  'rgba(139,92,246,.1)')}
+    ${sc('Visitantes nuevos',          s.new_visitors || 0, 'fa-user-plus',      'var(--accent)',  'rgba(79,70,229,.1)')}
+    ${sc('Recurrentes',                s.returning_visitors || 0, 'fa-user-check', 'var(--warning)', 'rgba(245,158,11,.1)')}
+    ${sc('Clicks en casos de éxito',   s.case_clicks,       'fa-arrow-up-right-from-square', 'var(--warning)', 'rgba(245,158,11,.1)')}
     ${sc('Preguntas al chatbot',       s.chatbot_messages,  'fa-comments',       'var(--purple)',  'rgba(139,92,246,.1)')}
   `;
 }
@@ -2778,7 +2877,95 @@ function visRenderCharts() {
 
   const pages = (s.top_pages || []).map((p, i) => ({ l: p.page, n: p.total, c: palette[i % palette.length] }));
   barChart('vis-chart-pages', pages.length ? pages : [{ l: 'Sin datos', n: 0, c: 'var(--accent)' }]);
+
+  const devices = (s.device_breakdown || []).map((d, i) => ({ l: d.device, n: d.total, c: palette[i % palette.length] }));
+  barChart('vis-chart-devices', devices.length ? devices : [{ l: 'Sin datos', n: 0, c: 'var(--accent)' }]);
+
+  const referrers = (s.top_referrers || []).map((r, i) => ({ l: visReferrerHost(r.referrer), n: r.total, c: palette[i % palette.length] }));
+  barChart('vis-chart-referrers', referrers.length ? referrers : [{ l: 'Entran directo (sin referencia externa)', n: 0, c: 'var(--accent)' }]);
 }
+
+function visSessionRowHtml(r) {
+  const cases = (r.cases || []).slice(0, 2).map(c => `<span class="badge" style="background:rgba(107,114,128,.12);color:#6b7280;margin-right:4px">${calEsc(c)}</span>`).join('');
+  const casesExtra = (r.cases || []).length > 2 ? `<span class="badge" style="background:rgba(107,114,128,.12);color:#6b7280">+${r.cases.length - 2}</span>` : '';
+  return `
+    <div class="card vis-session-row" data-session="${calEsc(r.session_id)}" style="padding:12px 16px;display:grid;grid-template-columns:150px 170px 80px 1fr 100px 100px 90px;gap:12px;align-items:center;margin-bottom:8px;cursor:pointer">
+      <span style="font-size:11.5px;color:var(--text-muted)">${audFmtDateTime(r.last_seen)}</span>
+      <span style="font-size:11.5px;color:var(--text)"><i class="fas ${VIS_DEVICE_ICON[r.device] || 'fa-globe'}" style="color:var(--text-muted);margin-right:5px"></i>${calEsc(r.device)} · ${calEsc(r.browser)}</span>
+      <span style="font-size:11.5px;color:var(--text-muted)">${r.page_views}</span>
+      <span>${cases || '<span style="font-size:11.5px;color:var(--text-muted)">—</span>'}${casesExtra}</span>
+      <span style="font-size:11.5px;color:var(--text-muted)">${r.whatsapp_clicks > 0 ? `<i class="fas fa-comment-dots"></i> ${r.whatsapp_clicks}` : '—'}</span>
+      <span style="font-size:11.5px;color:var(--text-muted)">${r.chatbot_messages > 0 ? `<i class="fas fa-comments"></i> ${r.chatbot_messages}` : '—'}</span>
+      <span>${r.is_lead ? '<span class="badge" style="background:rgba(239,68,68,.12);color:var(--danger)">🔥 Lead</span>' : ''}</span>
+    </div>`;
+}
+
+function visRenderSessions() {
+  document.getElementById('vis-sessions-count').textContent = `${visSessions.length} de ${visSessionsTotal} sesiones`;
+  document.getElementById('vis-sessions-load-more').style.display = visSessions.length < visSessionsTotal ? 'inline-flex' : 'none';
+
+  if (!visSessions.length) {
+    document.getElementById('vis-sessions-list').innerHTML = `<div class="empty-state"><i class="fas fa-route"></i><h3>Sin sesiones</h3><p>No hay sesiones registradas en este rango.</p></div>`;
+    return;
+  }
+  document.getElementById('vis-sessions-list').innerHTML = visSessions.map(visSessionRowHtml).join('');
+  document.querySelectorAll('.vis-session-row').forEach(el => {
+    el.addEventListener('click', () => visOpenTimeline(el.dataset.session));
+  });
+}
+
+function visSessionFilterChange(key, value) {
+  clearTimeout(visSessionsQDebounce);
+  if (key === 'q') {
+    visSessionsQDebounce = setTimeout(() => { visSessionFilters.q = value; visSessionsOffset = 0; visLoadSessions(); }, 350);
+  } else {
+    visSessionFilters[key] = value;
+    visSessionsOffset = 0;
+    visLoadSessions();
+  }
+}
+
+function visSessionsLoadMore() {
+  visSessionsOffset += VIS_SESSIONS_PAGE_SIZE;
+  visLoadSessions(true);
+}
+
+async function visOpenTimeline(sessionId) {
+  document.getElementById('vis-timeline-body').innerHTML = `<p style="font-size:12.5px;color:var(--text-muted)">Cargando recorrido…</p>`;
+  document.getElementById('vis-timeline-modal').classList.add('open');
+  try {
+    const data = await qsApiFetch('/api/analytics/sessions/' + encodeURIComponent(sessionId) + '/timeline');
+    const body = document.getElementById('vis-timeline-body');
+    if (!data.events.length) {
+      body.innerHTML = `<p style="font-size:12.5px;color:var(--text-muted)">Sin eventos para esta sesión.</p>`;
+      return;
+    }
+    const header = `
+      <div style="display:flex;flex-wrap:wrap;gap:16px;padding:10px 12px;background:var(--bg);border-radius:10px;margin-bottom:16px;font-size:12.5px;color:var(--text-muted)">
+        <span><i class="fas ${VIS_DEVICE_ICON[data.device] || 'fa-globe'}"></i> ${calEsc(data.device || '—')}</span>
+        <span>${calEsc(data.browser || '—')}</span>
+        <span>${calEsc(data.os || '—')}</span>
+        <span><i class="fas fa-location-dot"></i> ${calEsc(data.ip_address || '—')}</span>
+      </div>`;
+    const items = data.events.map(ev => `
+      <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="width:32px;height:32px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;${VIS_EVENT_BADGE[ev.event_type]||''}"><i class="fas ${VIS_TIMELINE_ICON[ev.event_type] || 'fa-bolt'}"></i></div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <strong style="font-size:12.5px;color:var(--text)">${calEsc(ev.event_label)}</strong>
+            <span style="font-size:11px;color:var(--text-muted)">${audFmtDateTime(ev.created_at)}</span>
+          </div>
+          ${(ev.case_name || ev.label) ? `<p style="margin:3px 0 0;font-size:12px;color:var(--text-muted);word-break:break-word">${calEsc(ev.case_name || ev.label)}</p>` : ''}
+          ${ev.page ? `<p style="margin:2px 0 0;font-size:11px;color:var(--text-muted)">${calEsc(ev.page)}</p>` : ''}
+        </div>
+      </div>`).join('');
+    body.innerHTML = header + `<div>${items}</div>`;
+  } catch (err) {
+    document.getElementById('vis-timeline-body').innerHTML = `<p style="font-size:12.5px;color:var(--danger)">${calEsc(err.message || 'Error al cargar el recorrido')}</p>`;
+  }
+}
+
+function visCloseTimeline() { document.getElementById('vis-timeline-modal').classList.remove('open'); }
 
 const VIS_EVENT_BADGE = {
   page_view: 'background:rgba(107,114,128,.12);color:#6b7280', case_click: 'background:rgba(16,185,129,.12);color:var(--success)',
