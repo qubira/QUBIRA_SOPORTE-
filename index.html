@@ -1269,6 +1269,10 @@
             <div id="vis-chart-outbound" class="chart-container"></div>
           </div>
         </div>
+        <div class="card" style="margin-top:18px">
+          <div class="card-header"><h3 class="card-title"><i class="fas fa-briefcase" style="color:var(--warning)"></i> Postulaciones por oferta (bolsa de trabajo)</h3></div>
+          <div id="vis-chart-jobapps" class="chart-container"></div>
+        </div>
       </div>
 
       <div style="display:flex;gap:8px;margin-top:22px">
@@ -2808,6 +2812,8 @@ const VIS_EVENT_TYPES = [
   ['time_on_page', 'Tiempo en página'],
   ['outbound_click', 'Click a link externo'],
   ['nav_click', 'Click en navegación'],
+  ['job_apply_click', 'Click en Postular (empleo)'],
+  ['job_apply_submit', 'Postulación enviada'],
 ];
 let visDays = 30;
 let visSummary = null;
@@ -2832,6 +2838,7 @@ const VIS_TIMELINE_ICON = {
   page_view: 'fa-eye', case_click: 'fa-arrow-up-right-from-square', whatsapp_click: 'fa-comment-dots',
   chatbot_open: 'fa-robot', chatbot_message: 'fa-comments',
   scroll_depth: 'fa-arrows-down-to-line', time_on_page: 'fa-clock', outbound_click: 'fa-arrow-up-right-from-square', nav_click: 'fa-compass',
+  job_apply_click: 'fa-briefcase', job_apply_submit: 'fa-check-circle',
 };
 
 function visSetDays(v) { visDays = Number(v); visLoad(); }
@@ -2936,6 +2943,8 @@ function visRenderKpis() {
     ${sc('Preguntas al chatbot',       s.chatbot_messages,  'fa-comments',       'var(--purple)',  'rgba(139,92,246,.1)')}
     ${sc('Tiempo promedio en página',  visFormatSeconds(s.avg_time_on_page_seconds), 'fa-clock', 'var(--accent)', 'rgba(79,70,229,.1)')}
     ${sc('Tasa de interacción',        `${s.engagement_rate ?? 0}%`, 'fa-bolt', 'var(--success)', 'rgba(16,185,129,.1)')}
+    ${sc('Clicks en Postular',         s.job_apply_clicks ?? 0, 'fa-briefcase', 'var(--warning)', 'rgba(245,158,11,.1)')}
+    ${sc('Postulaciones enviadas',     s.job_applications ?? 0, 'fa-check-circle', 'var(--success)', 'rgba(16,185,129,.1)')}
   `;
 }
 
@@ -2984,6 +2993,9 @@ function visRenderCharts() {
 
   const outbound = (s.top_outbound_clicks || []).map((o, i) => ({ l: o.destino, n: o.total, c: palette[i % palette.length] }));
   barChart('vis-chart-outbound', outbound.length ? outbound : [{ l: 'Sin clicks a sitios externos', n: 0, c: 'var(--accent)' }]);
+
+  const jobApps = (s.top_job_applications || []).map((j, i) => ({ l: j.puesto, n: j.total, c: palette[i % palette.length] }));
+  barChart('vis-chart-jobapps', jobApps.length ? jobApps : [{ l: 'Sin postulaciones', n: 0, c: 'var(--accent)' }]);
 }
 
 function visSessionRowHtml(r) {
@@ -3076,6 +3088,7 @@ const VIS_EVENT_BADGE = {
   chatbot_message: 'background:rgba(139,92,246,.12);color:var(--purple)',
   scroll_depth: 'background:rgba(107,114,128,.12);color:#6b7280', time_on_page: 'background:rgba(107,114,128,.12);color:#6b7280',
   outbound_click: 'background:rgba(245,158,11,.12);color:var(--warning)', nav_click: 'background:rgba(107,114,128,.12);color:#6b7280',
+  job_apply_click: 'background:rgba(245,158,11,.12);color:var(--warning)', job_apply_submit: 'background:rgba(16,185,129,.12);color:var(--success)',
 };
 
 function visReferrerHost(ref) {
