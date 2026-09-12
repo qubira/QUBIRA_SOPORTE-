@@ -1186,54 +1186,89 @@
           <option value="90">Últimos 90 días</option>
         </select>
       </div>
-      <div class="stats-grid" id="vis-stats-grid" style="margin-top:12px"></div>
-      <div class="dash-2col" style="margin-top:18px">
-        <div class="card">
+      <div style="display:flex;gap:4px;margin-top:14px" class="cal-tabs">
+        <button class="cal-tab active" id="vis-mtab-resumen" onclick="visSetMetricsTab('resumen')"><i class="fas fa-chart-line"></i> Resumen</button>
+        <button class="cal-tab" id="vis-mtab-adquisicion" onclick="visSetMetricsTab('adquisicion')"><i class="fas fa-globe"></i> Adquisición</button>
+        <button class="cal-tab" id="vis-mtab-comportamiento" onclick="visSetMetricsTab('comportamiento')"><i class="fas fa-bolt"></i> Comportamiento</button>
+      </div>
+
+      <div id="vis-panel-resumen" style="margin-top:18px">
+        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(79,70,229,.1);color:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fas fa-chart-line"></i></div>
+          <div>
+            <h2 style="margin:0;font-size:16px;font-weight:800;color:var(--text)">Resumen</h2>
+            <p style="margin:3px 0 0;font-size:12.5px;color:var(--text-muted);max-width:560px">Panorama general del tráfico e interacciones del sitio en el rango seleccionado.</p>
+          </div>
+        </div>
+        <div class="stats-grid" id="vis-stats-grid"></div>
+        <div class="card" style="margin-top:18px">
           <div class="card-header"><h3 class="card-title"><i class="fas fa-chart-line" style="color:var(--accent)"></i> Vistas por día</h3></div>
           <div id="vis-chart-days" class="chart-container"></div>
         </div>
-        <div class="card">
-          <div class="card-header"><h3 class="card-title"><i class="fas fa-trophy" style="color:var(--warning)"></i> Casos de éxito más clickeados</h3></div>
-          <div id="vis-chart-cases" class="chart-container"></div>
+      </div>
+
+      <div id="vis-panel-adquisicion" style="margin-top:18px;display:none">
+        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(79,70,229,.1);color:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fas fa-globe"></i></div>
+          <div>
+            <h2 style="margin:0;font-size:16px;font-weight:800;color:var(--text)">Adquisición</h2>
+            <p style="margin:3px 0 0;font-size:12.5px;color:var(--text-muted);max-width:560px">De dónde vienen tus visitantes: canales de tráfico, campañas de marketing y sitios que refieren.</p>
+          </div>
+        </div>
+        <div class="dash-2col">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="fas fa-share-nodes" style="color:var(--success)"></i> Canales de tráfico</h3></div>
+            <div id="vis-chart-channels" class="chart-container"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="fas fa-bullhorn" style="color:var(--warning)"></i> Campañas (UTM)</h3></div>
+            <div id="vis-chart-campaigns" class="chart-container"></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:18px">
+          <div class="card-header"><h3 class="card-title"><i class="fas fa-arrow-right-to-bracket" style="color:var(--purple)"></i> De dónde llegan</h3></div>
+          <div id="vis-chart-referrers" class="chart-container"></div>
         </div>
       </div>
-      <div class="dash-2col" style="margin-top:18px">
-        <div class="card">
-          <div class="card-header"><h3 class="card-title"><i class="fas fa-mobile-screen-button" style="color:var(--accent)"></i> Dispositivos</h3></div>
-          <div id="vis-chart-devices" class="chart-container"></div>
+
+      <div id="vis-panel-comportamiento" style="margin-top:18px;display:none">
+        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(79,70,229,.1);color:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fas fa-bolt"></i></div>
+          <div>
+            <h2 style="margin:0;font-size:16px;font-weight:800;color:var(--text)">Comportamiento</h2>
+            <p style="margin:3px 0 0;font-size:12.5px;color:var(--text-muted);max-width:560px">Qué tan lejos llegan los visitantes en la página y con qué elementos interactúan.</p>
+          </div>
         </div>
-        <div class="card">
-          <div class="card-header"><h3 class="card-title"><i class="fas fa-map-signs" style="color:var(--success)"></i> Páginas más vistas</h3></div>
-          <div id="vis-chart-pages" class="chart-container"></div>
+        <div class="dash-2col">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="fas fa-arrows-down-to-line" style="color:var(--accent)"></i> Profundidad de scroll</h3></div>
+            <div id="vis-chart-scroll" class="chart-container"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="fas fa-map-signs" style="color:var(--success)"></i> Páginas más vistas</h3></div>
+            <div id="vis-chart-pages" class="chart-container"></div>
+          </div>
         </div>
-      </div>
-      <div class="card" style="margin-top:18px">
-        <div class="card-header"><h3 class="card-title"><i class="fas fa-arrow-right-to-bracket" style="color:var(--purple)"></i> De dónde llegan</h3></div>
-        <div id="vis-chart-referrers" class="chart-container"></div>
-      </div>
-      <div class="dash-2col" style="margin-top:18px">
-        <div class="card">
-          <div class="card-header"><h3 class="card-title"><i class="fas fa-arrows-down-to-line" style="color:var(--accent)"></i> Profundidad de scroll</h3></div>
-          <div id="vis-chart-scroll" class="chart-container"></div>
+        <div class="dash-2col" style="margin-top:18px">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="fas fa-trophy" style="color:var(--warning)"></i> Casos de éxito más clickeados</h3></div>
+            <div id="vis-chart-cases" class="chart-container"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="fas fa-mobile-screen-button" style="color:var(--accent)"></i> Dispositivos</h3></div>
+            <div id="vis-chart-devices" class="chart-container"></div>
+          </div>
         </div>
-        <div class="card">
-          <div class="card-header"><h3 class="card-title"><i class="fas fa-share-nodes" style="color:var(--success)"></i> Canales de tráfico</h3></div>
-          <div id="vis-chart-channels" class="chart-container"></div>
+        <div class="dash-2col" style="margin-top:18px">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="fas fa-compass" style="color:var(--purple)"></i> Clicks en navegación</h3></div>
+            <div id="vis-chart-navclicks" class="chart-container"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="fas fa-arrow-up-right-from-square" style="color:var(--danger)"></i> Clicks a links externos</h3></div>
+            <div id="vis-chart-outbound" class="chart-container"></div>
+          </div>
         </div>
-      </div>
-      <div class="dash-2col" style="margin-top:18px">
-        <div class="card">
-          <div class="card-header"><h3 class="card-title"><i class="fas fa-bullhorn" style="color:var(--warning)"></i> Campañas (UTM)</h3></div>
-          <div id="vis-chart-campaigns" class="chart-container"></div>
-        </div>
-        <div class="card">
-          <div class="card-header"><h3 class="card-title"><i class="fas fa-compass" style="color:var(--purple)"></i> Clicks en navegación</h3></div>
-          <div id="vis-chart-navclicks" class="chart-container"></div>
-        </div>
-      </div>
-      <div class="card" style="margin-top:18px">
-        <div class="card-header"><h3 class="card-title"><i class="fas fa-arrow-up-right-from-square" style="color:var(--danger)"></i> Clicks a links externos</h3></div>
-        <div id="vis-chart-outbound" class="chart-container"></div>
       </div>
 
       <div style="display:flex;gap:8px;margin-top:22px">
@@ -2777,6 +2812,7 @@ const VIS_EVENT_TYPES = [
 let visDays = 30;
 let visSummary = null;
 let visTab = 'sessions'; // 'sessions' | 'events'
+let visMetricsTab = 'resumen'; // 'resumen' | 'adquisicion' | 'comportamiento'
 let visRows = [];
 let visTotal = 0;
 let visOffset = 0;
@@ -2799,6 +2835,15 @@ const VIS_TIMELINE_ICON = {
 };
 
 function visSetDays(v) { visDays = Number(v); visLoad(); }
+
+function visSetMetricsTab(tab) {
+  if (visMetricsTab === tab) return;
+  visMetricsTab = tab;
+  ['resumen', 'adquisicion', 'comportamiento'].forEach(key => {
+    document.getElementById('vis-mtab-' + key).classList.toggle('active', tab === key);
+    document.getElementById('vis-panel-' + key).style.display = tab === key ? '' : 'none';
+  });
+}
 
 function visSwitchTab(tab) {
   if (visTab === tab) return;
