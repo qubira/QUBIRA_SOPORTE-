@@ -1211,6 +1211,30 @@
         <div class="card-header"><h3 class="card-title"><i class="fas fa-arrow-right-to-bracket" style="color:var(--purple)"></i> De dónde llegan</h3></div>
         <div id="vis-chart-referrers" class="chart-container"></div>
       </div>
+      <div class="dash-2col" style="margin-top:18px">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="fas fa-arrows-down-to-line" style="color:var(--accent)"></i> Profundidad de scroll</h3></div>
+          <div id="vis-chart-scroll" class="chart-container"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="fas fa-share-nodes" style="color:var(--success)"></i> Canales de tráfico</h3></div>
+          <div id="vis-chart-channels" class="chart-container"></div>
+        </div>
+      </div>
+      <div class="dash-2col" style="margin-top:18px">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="fas fa-bullhorn" style="color:var(--warning)"></i> Campañas (UTM)</h3></div>
+          <div id="vis-chart-campaigns" class="chart-container"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="fas fa-compass" style="color:var(--purple)"></i> Clicks en navegación</h3></div>
+          <div id="vis-chart-navclicks" class="chart-container"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:18px">
+        <div class="card-header"><h3 class="card-title"><i class="fas fa-arrow-up-right-from-square" style="color:var(--danger)"></i> Clicks a links externos</h3></div>
+        <div id="vis-chart-outbound" class="chart-container"></div>
+      </div>
 
       <div style="display:flex;gap:8px;margin-top:22px">
         <button class="cal-tab active" id="vis-tab-sessions" onclick="visSwitchTab('sessions')"><i class="fas fa-route"></i> Sesiones</button>
@@ -2745,6 +2769,10 @@ const VIS_EVENT_TYPES = [
   ['whatsapp_click', 'Click en WhatsApp'],
   ['chatbot_open', 'Abrió el chatbot'],
   ['chatbot_message', 'Mensaje al chatbot'],
+  ['scroll_depth', 'Scroll'],
+  ['time_on_page', 'Tiempo en página'],
+  ['outbound_click', 'Click a link externo'],
+  ['nav_click', 'Click en navegación'],
 ];
 let visDays = 30;
 let visSummary = null;
@@ -2767,6 +2795,7 @@ const VIS_DEVICE_ICON = { 'Móvil': 'fa-mobile-screen-button', 'Tablet': 'fa-tab
 const VIS_TIMELINE_ICON = {
   page_view: 'fa-eye', case_click: 'fa-arrow-up-right-from-square', whatsapp_click: 'fa-comment-dots',
   chatbot_open: 'fa-robot', chatbot_message: 'fa-comments',
+  scroll_depth: 'fa-arrows-down-to-line', time_on_page: 'fa-clock', outbound_click: 'fa-arrow-up-right-from-square', nav_click: 'fa-compass',
 };
 
 function visSetDays(v) { visDays = Number(v); visLoad(); }
@@ -2860,7 +2889,17 @@ function visRenderKpis() {
     ${sc('Recurrentes',                s.returning_visitors || 0, 'fa-user-check', 'var(--warning)', 'rgba(245,158,11,.1)')}
     ${sc('Clicks en casos de éxito',   s.case_clicks,       'fa-arrow-up-right-from-square', 'var(--warning)', 'rgba(245,158,11,.1)')}
     ${sc('Preguntas al chatbot',       s.chatbot_messages,  'fa-comments',       'var(--purple)',  'rgba(139,92,246,.1)')}
+    ${sc('Tiempo promedio en página',  visFormatSeconds(s.avg_time_on_page_seconds), 'fa-clock', 'var(--accent)', 'rgba(79,70,229,.1)')}
+    ${sc('Tasa de interacción',        `${s.engagement_rate ?? 0}%`, 'fa-bolt', 'var(--success)', 'rgba(16,185,129,.1)')}
   `;
+}
+
+function visFormatSeconds(totalSeconds) {
+  const s = Math.round(totalSeconds || 0);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  return `${m}m ${rem}s`;
 }
 
 function visRenderCharts() {
@@ -2883,19 +2922,38 @@ function visRenderCharts() {
 
   const referrers = (s.top_referrers || []).map((r, i) => ({ l: visReferrerHost(r.referrer), n: r.total, c: palette[i % palette.length] }));
   barChart('vis-chart-referrers', referrers.length ? referrers : [{ l: 'Entran directo (sin referencia externa)', n: 0, c: 'var(--accent)' }]);
+
+  const scrollOrder = ['25', '50', '75', '100'];
+  const scrollByDepth = Object.fromEntries((s.scroll_depth || []).map(r => [String(r.depth), Number(r.sessions) || 0]));
+  const scroll = scrollOrder.map((d, i) => ({ l: `${d}% de la página`, n: scrollByDepth[d] || 0, c: palette[i % palette.length] }));
+  barChart('vis-chart-scroll', scroll.some(r => r.n) ? scroll : [{ l: 'Sin datos de scroll', n: 0, c: 'var(--accent)' }]);
+
+  const channels = (s.channels || []).map((c, i) => ({ l: c.channel, n: c.total, c: palette[i % palette.length] }));
+  barChart('vis-chart-channels', channels.length ? channels : [{ l: 'Sin datos', n: 0, c: 'var(--accent)' }]);
+
+  const campaigns = (s.top_campaigns || []).map((c, i) => ({ l: `${c.utm_campaign} · ${c.utm_source || ''}`, n: c.sessions, c: palette[i % palette.length] }));
+  barChart('vis-chart-campaigns', campaigns.length ? campaigns : [{ l: 'Sin campañas registradas', n: 0, c: 'var(--accent)' }]);
+
+  const navClicks = (s.top_nav_clicks || []).map((n, i) => ({ l: n.seccion, n: n.total, c: palette[i % palette.length] }));
+  barChart('vis-chart-navclicks', navClicks.length ? navClicks : [{ l: 'Sin clicks de navegación', n: 0, c: 'var(--accent)' }]);
+
+  const outbound = (s.top_outbound_clicks || []).map((o, i) => ({ l: o.destino, n: o.total, c: palette[i % palette.length] }));
+  barChart('vis-chart-outbound', outbound.length ? outbound : [{ l: 'Sin clicks a sitios externos', n: 0, c: 'var(--accent)' }]);
 }
 
 function visSessionRowHtml(r) {
   const cases = (r.cases || []).slice(0, 2).map(c => `<span class="badge" style="background:rgba(107,114,128,.12);color:#6b7280;margin-right:4px">${calEsc(c)}</span>`).join('');
   const casesExtra = (r.cases || []).length > 2 ? `<span class="badge" style="background:rgba(107,114,128,.12);color:#6b7280">+${r.cases.length - 2}</span>` : '';
   return `
-    <div class="card vis-session-row" data-session="${calEsc(r.session_id)}" style="padding:12px 16px;display:grid;grid-template-columns:150px 170px 80px 1fr 100px 100px 90px;gap:12px;align-items:center;margin-bottom:8px;cursor:pointer">
+    <div class="card vis-session-row" data-session="${calEsc(r.session_id)}" style="padding:12px 16px;display:grid;grid-template-columns:150px 170px 80px 130px 1fr 100px 100px 110px 90px;gap:12px;align-items:center;margin-bottom:8px;cursor:pointer">
       <span style="font-size:11.5px;color:var(--text-muted)">${audFmtDateTime(r.last_seen)}</span>
       <span style="font-size:11.5px;color:var(--text)"><i class="fas ${VIS_DEVICE_ICON[r.device] || 'fa-globe'}" style="color:var(--text-muted);margin-right:5px"></i>${calEsc(r.device)} · ${calEsc(r.browser)}</span>
       <span style="font-size:11.5px;color:var(--text-muted)">${r.page_views}</span>
+      <span style="font-size:11.5px;color:var(--text-muted)" title="${calEsc(r.entry_page || '')} → ${calEsc(r.exit_page || '')}">${calEsc(r.channel || 'Directo')}</span>
       <span>${cases || '<span style="font-size:11.5px;color:var(--text-muted)">—</span>'}${casesExtra}</span>
       <span style="font-size:11.5px;color:var(--text-muted)">${r.whatsapp_clicks > 0 ? `<i class="fas fa-comment-dots"></i> ${r.whatsapp_clicks}` : '—'}</span>
       <span style="font-size:11.5px;color:var(--text-muted)">${r.chatbot_messages > 0 ? `<i class="fas fa-comments"></i> ${r.chatbot_messages}` : '—'}</span>
+      <span style="font-size:11.5px;color:var(--text-muted)">${r.time_on_page_seconds != null ? visFormatSeconds(r.time_on_page_seconds) : '—'}${r.scroll_max ? ` · ${r.scroll_max}%` : ''}</span>
       <span>${r.is_lead ? '<span class="badge" style="background:rgba(239,68,68,.12);color:var(--danger)">🔥 Lead</span>' : ''}</span>
     </div>`;
 }
@@ -2971,6 +3029,8 @@ const VIS_EVENT_BADGE = {
   page_view: 'background:rgba(107,114,128,.12);color:#6b7280', case_click: 'background:rgba(16,185,129,.12);color:var(--success)',
   whatsapp_click: 'background:rgba(16,185,129,.12);color:var(--success)', chatbot_open: 'background:rgba(139,92,246,.12);color:var(--purple)',
   chatbot_message: 'background:rgba(139,92,246,.12);color:var(--purple)',
+  scroll_depth: 'background:rgba(107,114,128,.12);color:#6b7280', time_on_page: 'background:rgba(107,114,128,.12);color:#6b7280',
+  outbound_click: 'background:rgba(245,158,11,.12);color:var(--warning)', nav_click: 'background:rgba(107,114,128,.12);color:#6b7280',
 };
 
 function visReferrerHost(ref) {
