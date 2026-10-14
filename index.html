@@ -2330,6 +2330,7 @@ function calOpenForm(editId) {
         ${CAL_MEETING_TYPES.map(t => `<option value="${t}" ${editing?.meeting_type===t?'selected':''}>${t}</option>`).join('')}
       </select>
     </div>
+    <div class="form-group" style="margin-bottom:12px"><label>Ubicación</label><input id="cal-in-location" placeholder="Sala de reuniones, dirección, link de videollamada..." value="${calEsc(editing?.location || '')}"></div>
     <div class="form-group" style="margin-bottom:12px"><label>Motivo</label><input id="cal-in-motivo" value="${calEsc(editing?.motivo || '')}"></div>
     <div class="form-group" style="margin-bottom:12px"><label>Descripción</label><textarea id="cal-in-description" rows="2">${calEsc(editing?.description || '')}</textarea></div>
     <div class="form-group" style="margin-bottom:12px">
@@ -2475,6 +2476,7 @@ async function calSubmitForm() {
   const start_time = document.getElementById('cal-in-start').value;
   const end_time = document.getElementById('cal-in-end').value;
   const meeting_type = document.getElementById('cal-in-type').value;
+  const location = document.getElementById('cal-in-location').value.trim();
   const motivo = document.getElementById('cal-in-motivo').value.trim();
   const description = document.getElementById('cal-in-description').value.trim();
 
@@ -2484,7 +2486,7 @@ async function calSubmitForm() {
   if (!calSelectedParticipants.length && !calExternalParticipants.length) return toast('error', 'Falta información', 'Selecciona al menos un participante');
 
   const payload = {
-    title, date, start_time, end_time, meeting_type, motivo, description,
+    title, date, start_time, end_time, meeting_type, location, motivo, description,
     participants: calSelectedParticipants.map(p => ({ user_id: p.user_id })),
     external_participants: calExternalParticipants,
   };
@@ -2536,6 +2538,7 @@ function calViewMeeting(id) {
       <p style="font-size:16px;font-weight:700">${calEsc(m.title)}</p>
       <p><strong>Horario:</strong> ${m.start_time.slice(0,5)} — ${m.end_time.slice(0,5)}</p>
       ${m.meeting_type ? `<p><strong>Tipo:</strong> ${calEsc(m.meeting_type)}</p>` : ''}
+      ${m.location ? `<p><strong>Ubicación:</strong> ${calEsc(m.location)}</p>` : ''}
       ${m.motivo ? `<p><strong>Motivo:</strong> ${calEsc(m.motivo)}</p>` : ''}
       ${m.description ? `<p><strong>Descripción:</strong> ${calEsc(m.description)}</p>` : ''}
       <div><strong>Participantes:</strong><ul style="margin:4px 0 0 18px;padding:0">${participantsHtml || '<li>Sin participantes</li>'}</ul></div>
