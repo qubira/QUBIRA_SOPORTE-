@@ -850,22 +850,27 @@
 
     <!-- ═══════════════ CALENDARIO ═══════════════ -->
     <div class="page" id="page-calendario">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:2px">
-        <div class="cal-tabs">
-          <button type="button" class="cal-tab" id="cal-tab-area" onclick="calSetMode('area')">Calendario — Soporte</button>
-          <button type="button" class="cal-tab" id="cal-tab-mine" onclick="calSetMode('mine')">Mi agenda</button>
+      <div style="position:sticky;top:64px;z-index:20;background:var(--bg);padding-top:2px;padding-bottom:10px;margin:0 -2px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:2px">
+          <div class="cal-tabs">
+            <button type="button" class="cal-tab" id="cal-tab-area" onclick="calSetMode('area')">Calendario — Soporte</button>
+            <button type="button" class="cal-tab" id="cal-tab-mine" onclick="calSetMode('mine')">Mi agenda</button>
+            <button type="button" class="cal-tab" id="cal-tab-week" onclick="calSetMode('week')">Vista semana</button>
+            <button type="button" class="cal-tab" id="cal-tab-weekarea" onclick="calSetMode('weekArea')">Vista semana general</button>
+          </div>
+          <button class="btn btn-primary" onclick="calOpenForm()"><i class="fas fa-plus"></i> Agregar reunión</button>
         </div>
-        <button class="btn btn-primary" onclick="calOpenForm()"><i class="fas fa-plus"></i> Agregar reunión</button>
-      </div>
-      <div class="filters-bar" id="cal-filters" style="margin-top:16px">
-        <select id="cal-f-area" onchange="calFilterChange('area', this.value)"></select>
-        <input id="cal-f-participant" placeholder="Buscar participante..." oninput="calFilterChange('participant', this.value)">
-        <select id="cal-f-type" onchange="calFilterChange('type', this.value)"></select>
-        <input type="date" id="cal-f-date-from" onchange="calFilterChange('date_from', this.value)">
-        <input type="date" id="cal-f-date-to" onchange="calFilterChange('date_to', this.value)">
-        <select id="cal-f-status" onchange="calFilterChange('status', this.value)"></select>
+        <div class="filters-bar" id="cal-filters" style="margin-top:16px">
+          <select id="cal-f-area" onchange="calFilterChange('area', this.value)"></select>
+          <input id="cal-f-participant" placeholder="Buscar participante..." oninput="calFilterChange('participant', this.value)">
+          <select id="cal-f-type" onchange="calFilterChange('type', this.value)"></select>
+          <input type="date" id="cal-f-date-from" onchange="calFilterChange('date_from', this.value)">
+          <input type="date" id="cal-f-date-to" onchange="calFilterChange('date_to', this.value)">
+          <select id="cal-f-status" onchange="calFilterChange('status', this.value)"></select>
+        </div>
       </div>
       <div id="cal-list"></div>
+      <div id="cal-week-view" style="display:none"></div>
     </div>
 
     <!-- ═══════════════ NUEVO CASO ═══════════════ -->
@@ -2180,6 +2185,24 @@ const CAL_AREAS = [['SOPORTE','Soporte'],['ADG','ADG'],['TI','OTI'],['RRHH','RR.
 const CAL_MEETING_TYPES = ['Revisión de incidencia','Soporte técnico','Coordinación','Capacitación','Reunión con otra área','Otro'];
 const CAL_EXTERNAL_KINDS = [['cliente','Cliente'],['postulante','Postulante'],['proveedor','Proveedor'],['consultor','Consultor'],['otro','Otro']];
 const CAL_STATUS_LABEL = { scheduled:'Programada', confirmed:'Confirmada', in_progress:'En curso', completed:'Finalizada', cancelled:'Cancelada' };
+/* En la vista semana solo se muestran las reuniones propias (ver
+   calLoad()), así que colorear por área no sirve para distinguirlas —
+   casi siempre serían todas del mismo color. Se colorea por tipo de
+   reunión en su lugar, que varía más seguido. */
+const CAL_MEETING_TYPE_COLORS = {
+  'Revisión de incidencia': '#f43f5e',
+  'Soporte técnico': '#0ea5e9',
+  'Coordinación': '#f59e0b',
+  'Capacitación': '#10b981',
+  'Reunión con otra área': '#8b5cf6',
+  'Otro': '#64748b',
+};
+function calMeetingTypeColor(type) { return CAL_MEETING_TYPE_COLORS[type] || '#64748b'; }
+const CAL_WEEK_START_HOUR = 7;
+const CAL_WEEK_END_HOUR = 21;
+const CAL_WEEK_ROW_H = 48; // px por hora
+const CAL_WEEKDAY_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+const CAL_MONTH_LABELS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 
 let calMode = 'area';
 let calFilters = { area: CAL_OWN_AREA, participant: '', type: '', date_from: calTodayISO(), date_to: '', status: '' };
@@ -2191,15 +2214,72 @@ let calExternalParticipants = [];
 let calDirResults = [];
 let calDirDebounce, calFilterDebounce;
 let calCheckToken = 0;
+let calPendingImage = null; // url subida en el modal, antes de guardar la reunión
+let calWeekOffset = 0;      // semanas respecto a la actual, para la vista semanal
 
 function calTodayISO() { return new Date().toISOString().slice(0, 10); }
 function calEsc(s) { return escapeHtmlTw(s); }
 function calFullName(p) { return [p.nombre, p.apellidos].filter(Boolean).join(' '); }
 function calIsPrivileged() { return (qsUser?.nivel_acceso || 0) >= 100; }
+function calIsoDate(d) { return d.toISOString().slice(0, 10); }
+function calWeekBounds(offset) {
+  const now = new Date();
+  const day = now.getDay(); // 0=domingo..6=sábado
+  const diffToMonday = (day === 0 ? -6 : 1 - day);
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  monday.setDate(monday.getDate() + diffToMonday + offset * 7);
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+  return { monday, sunday: days[6], days };
+}
+/* Reparte eventos que se solapan en el tiempo en columnas lado a lado
+   (como Google Calendar), para que nunca se dibujen uno encima del
+   otro. Agrupa eventos en "racimos" de solapamiento consecutivo y
+   dentro de cada racimo asigna la primera columna libre a cada evento
+   (algoritmo greedy por orden de inicio). */
+function calLayoutDayEvents(events) {
+  const sorted = [...events].sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
+  const placed = [];
+  let cluster = [];
+  let clusterEnd = -Infinity;
+
+  const flushCluster = () => {
+    if (!cluster.length) return;
+    const colEnds = [];
+    cluster.forEach(ev => {
+      let col = colEnds.findIndex(end => end <= ev.startMin);
+      if (col === -1) { col = colEnds.length; colEnds.push(ev.endMin); }
+      else { colEnds[col] = ev.endMin; }
+      placed.push({ ev, col });
+    });
+    const totalCols = colEnds.length;
+    placed.slice(-cluster.length).forEach(p => { p.totalCols = totalCols; });
+    cluster = []; clusterEnd = -Infinity;
+  };
+
+  sorted.forEach(ev => {
+    if (cluster.length && ev.startMin >= clusterEnd) flushCluster();
+    cluster.push(ev);
+    clusterEnd = Math.max(clusterEnd, ev.endMin);
+  });
+  flushCluster();
+
+  return placed;
+}
 
 async function calRender() {
   document.getElementById('cal-tab-area').className = 'cal-tab ' + (calMode === 'area' ? 'active' : '');
   document.getElementById('cal-tab-mine').className = 'cal-tab ' + (calMode === 'mine' ? 'active' : '');
+  document.getElementById('cal-tab-week').className = 'cal-tab ' + (calMode === 'week' ? 'active' : '');
+  document.getElementById('cal-tab-weekarea').className = 'cal-tab ' + (calMode === 'weekArea' ? 'active' : '');
+
+  const isWeekMode = calMode === 'week' || calMode === 'weekArea';
+  document.getElementById('cal-filters').style.display = isWeekMode ? 'none' : '';
+  document.getElementById('cal-list').style.display = isWeekMode ? 'none' : '';
+  document.getElementById('cal-week-view').style.display = isWeekMode ? '' : 'none';
   document.getElementById('cal-f-area').style.display = calMode === 'area' ? '' : 'none';
 
   const areaSel = document.getElementById('cal-f-area');
@@ -2216,7 +2296,11 @@ async function calRender() {
   await calLoad();
 }
 
-function calSetMode(mode) { calMode = mode; calRender(); }
+function calSetMode(mode) {
+  calMode = mode;
+  if (mode === 'week' || mode === 'weekArea') calWeekOffset = 0;
+  calRender();
+}
 
 function calFilterChange(key, value) {
   clearTimeout(calFilterDebounce);
@@ -2230,7 +2314,30 @@ function calFilterChange(key, value) {
 
 async function calLoad() {
   try {
-    const params = new URLSearchParams();
+    let params;
+    if (calMode === 'week' || calMode === 'weekArea') {
+      const { monday, sunday } = calWeekBounds(calWeekOffset);
+      params = new URLSearchParams({ date_from: calIsoDate(monday), date_to: calIsoDate(sunday) });
+      if (calMode === 'week') {
+        /* Solo las reuniones propias de quien está logueado — el horario
+           de una misma persona nunca se solapa (ya se valida al crear/
+           editar), así que esta vista nunca va a mostrar bloques
+           superpuestos. */
+        params.set('mine', 'true');
+      } else {
+        /* Vista semana general: todas las reuniones del área, de
+           cualquier participante — estas sí pueden solaparse entre sí
+           (dos personas distintas con reuniones a la misma hora), así
+           que el render usa un layout de columnas para no superponerlas. */
+        params.set('area', CAL_OWN_AREA);
+      }
+      const meetings = await qsApiFetch('/api/calendar/meetings?' + params.toString());
+      calMeetings = meetings;
+      calRenderWeekView();
+      return;
+    }
+
+    params = new URLSearchParams();
     if (calFilters.date_from) params.set('date_from', calFilters.date_from);
     if (calFilters.date_to) params.set('date_to', calFilters.date_to);
     if (calFilters.status) params.set('status', calFilters.status);
@@ -2248,6 +2355,88 @@ async function calLoad() {
   } catch (err) {
     document.getElementById('cal-list').innerHTML = `<div class="card" style="padding:24px;text-align:center;color:var(--text-muted)">${calEsc(err.message || 'Error al cargar el calendario')}</div>`;
   }
+}
+
+function calRenderWeekView() {
+  const general = calMode === 'weekArea';
+  const { monday, days } = calWeekBounds(calWeekOffset);
+  const hours = [];
+  for (let h = CAL_WEEK_START_HOUR; h < CAL_WEEK_END_HOUR; h++) hours.push(h);
+  const rangeLabel = `${monday.getDate()} de ${CAL_MONTH_LABELS[monday.getMonth()]}${monday.getMonth() !== days[6].getMonth() ? ' – ' + days[6].getDate() + ' de ' + CAL_MONTH_LABELS[days[6].getMonth()] : ' – ' + days[6].getDate()} de ${days[6].getFullYear()}`;
+  const todayIso = calTodayISO();
+
+  const dayCols = days.map((d) => {
+    const iso = calIsoDate(d);
+    const isToday = iso === todayIso;
+    const dayMeetings = calMeetings
+      .filter(m => m.meeting_date === iso && m.visibility !== 'busy_only')
+      .map(m => {
+        const [sh, sm] = m.start_time.slice(0,5).split(':').map(Number);
+        const [eh, em] = m.end_time.slice(0,5).split(':').map(Number);
+        return {
+          m,
+          startMin: Math.max(0, (sh - CAL_WEEK_START_HOUR) * 60 + sm),
+          endMin: Math.min((CAL_WEEK_END_HOUR - CAL_WEEK_START_HOUR) * 60, (eh - CAL_WEEK_START_HOUR) * 60 + em),
+        };
+      });
+    const blocks = calLayoutDayEvents(dayMeetings).map(({ ev, col, totalCols }) => {
+      const { m, startMin, endMin } = ev;
+      const top = (startMin / 60) * CAL_WEEK_ROW_H;
+      const height = Math.max(20, ((endMin - startMin) / 60) * CAL_WEEK_ROW_H);
+      const widthPct = 100 / totalCols;
+      const leftPct = col * widthPct;
+      const posStyle = totalCols > 1
+        ? `left:calc(${leftPct}% + 1px);width:calc(${widthPct}% - 2px)`
+        : 'left:2px;right:2px';
+      const internalNames = general
+        ? (m.participants || []).filter(p => p.participant_type === 'internal').map(p => p.user_name).filter(Boolean)
+        : [];
+      return `
+        <button type="button" class="cal-week-event" onclick="calViewMeeting('${m.id}')" style="position:absolute;border:0;border-radius:6px;background:${calMeetingTypeColor(m.meeting_type)};color:#fff;text-align:left;padding:3px 6px;overflow:hidden;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.25);top:${top}px;height:${height}px;${posStyle}">
+          <div style="font-size:10px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${calEsc(m.title)}</div>
+          <div style="font-size:9px;opacity:.9;line-height:1.2">${m.start_time.slice(0,5)}–${m.end_time.slice(0,5)}</div>
+          ${internalNames.length ? `<div style="font-size:9px;opacity:.85;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${calEsc(internalNames.join(', '))}</div>` : ''}
+        </button>`;
+    }).join('');
+    return `
+      <div style="position:relative;border-left:1px solid var(--border);${isToday ? 'background:rgba(79,70,229,.06)' : ''}height:${hours.length * CAL_WEEK_ROW_H}px">
+        ${hours.map((_, hi) => `<div style="position:absolute;left:0;right:0;border-top:1px solid var(--border);top:${hi * CAL_WEEK_ROW_H}px"></div>`).join('')}
+        ${blocks}
+      </div>`;
+  }).join('');
+
+  const dayHeaders = days.map((d, i) => {
+    const iso = calIsoDate(d);
+    const isToday = iso === todayIso;
+    return `
+      <div style="text-align:center;padding:8px 0;border-left:1px solid var(--border);${isToday ? 'background:rgba(79,70,229,.06)' : ''}">
+        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase">${CAL_WEEKDAY_LABELS[i]}</div>
+        <div style="font-size:13.5px;font-weight:700;${isToday ? 'color:var(--accent)' : ''}">${d.getDate()}</div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('cal-week-view').innerHTML = `
+  <div class="card" style="padding:0;overflow:hidden;">
+    ${general ? `<div style="padding:10px 14px 0;font-size:12px;font-weight:600;color:var(--text-muted);">Todas las reuniones del área Soporte — eventos que se cruzan en horario se muestran lado a lado</div>` : ''}
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border);">
+      <button type="button" class="btn btn-outline" style="padding:6px 12px;font-size:12.5px;" onclick="calWeekOffset=0;calLoad();">Hoy</button>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button type="button" style="border:0;background:none;cursor:pointer;color:var(--text-muted);padding:4px;" onclick="calWeekOffset--;calLoad();"><i class="fas fa-chevron-left"></i></button>
+        <span style="font-size:13.5px;font-weight:600;">${rangeLabel}</span>
+        <button type="button" style="border:0;background:none;cursor:pointer;color:var(--text-muted);padding:4px;" onclick="calWeekOffset++;calLoad();"><i class="fas fa-chevron-right"></i></button>
+      </div>
+      <div style="width:72px;"></div>
+    </div>
+    <div style="overflow-x:auto;">
+      <div style="display:grid;grid-template-columns:56px repeat(7,minmax(110px,1fr));min-width:820px">
+        <div></div>${dayHeaders}
+        <div style="position:relative;height:${hours.length * CAL_WEEK_ROW_H}px">
+          ${hours.map((h, hi) => `<div style="position:absolute;left:0;right:0;text-align:right;padding-right:8px;font-size:11px;color:var(--text-muted);transform:translateY(-50%);top:${hi * CAL_WEEK_ROW_H}px">${String(h).padStart(2,'0')}:00</div>`).join('')}
+        </div>
+        ${dayCols}
+      </div>
+    </div>
+  </div>`;
 }
 
 function calRenderList() {
@@ -2297,26 +2486,12 @@ function calMeetingCard(m) {
   </div>`;
 }
 
-function calOpenForm(editId) {
-  const editing = editId ? calMeetings.find(m => m.id === editId) : null;
-  if (editId && (!editing || editing.visibility === 'busy_only')) return;
-  calEditingId = editId || null;
-  calConflicts = [];
-  if (editing) {
-    calSelectedParticipants = (editing.participants || []).filter(p => p.participant_type === 'internal')
-      .map(p => ({ user_id: p.user_id, nombre: p.user_name, area: p.user_area }));
-    calExternalParticipants = (editing.participants || []).filter(p => p.participant_type === 'external')
-      .map(p => ({ name: p.external_name, kind: p.external_kind }));
-  } else {
-    calSelectedParticipants = [];
-    calExternalParticipants = [];
-  }
-
-  document.getElementById('cal-modal-kicker').textContent = editing ? 'Editar reunión' : 'Nueva reunión';
-  document.getElementById('cal-modal-body').innerHTML = `
+function calFormBodyHtml(editing) {
+  const currentImage = calPendingImage !== null ? calPendingImage : (editing?.image_url || null);
+  return `
     <div class="form-group" style="margin-bottom:12px">
       <label>Nombre de la reunión *</label>
-      <input id="cal-in-title" value="${calEsc(editing?.title || '')}">
+      <input id="cal-in-title" autocomplete="off" value="${calEsc(editing?.title || '')}">
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
       <div class="form-group"><label>Fecha *</label><input type="date" id="cal-in-date" value="${editing?.meeting_date || ''}"></div>
@@ -2330,13 +2505,23 @@ function calOpenForm(editId) {
         ${CAL_MEETING_TYPES.map(t => `<option value="${t}" ${editing?.meeting_type===t?'selected':''}>${t}</option>`).join('')}
       </select>
     </div>
-    <div class="form-group" style="margin-bottom:12px"><label>Ubicación</label><input id="cal-in-location" placeholder="Sala de reuniones, dirección, link de videollamada..." value="${calEsc(editing?.location || '')}"></div>
-    <div class="form-group" style="margin-bottom:12px"><label>Motivo</label><input id="cal-in-motivo" value="${calEsc(editing?.motivo || '')}"></div>
+    <div class="form-group" style="margin-bottom:12px"><label>Motivo</label><input id="cal-in-motivo" autocomplete="off" value="${calEsc(editing?.motivo || '')}"></div>
     <div class="form-group" style="margin-bottom:12px"><label>Descripción</label><textarea id="cal-in-description" rows="2">${calEsc(editing?.description || '')}</textarea></div>
+    <div class="form-group" style="margin-bottom:12px"><label>Ubicación</label><input id="cal-in-location" placeholder="Sala de reuniones, dirección, link de videollamada..." autocomplete="off" value="${calEsc(editing?.location || '')}"></div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Imagen del evento (opcional)</label>
+      ${currentImage ? `
+        <div style="position:relative;display:inline-block;margin-bottom:6px">
+          <img src="${calEsc(currentImage)}" style="border-radius:8px;max-height:110px;border:1px solid var(--border);display:block">
+          <button type="button" onclick="calRemoveImage()" style="position:absolute;top:-6px;right:-6px;background:var(--bg-card);border-radius:50%;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.3);width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-muted)"><i class="fas fa-times" style="font-size:11px"></i></button>
+        </div>` : ''}
+      <input type="file" id="cal-image-input" accept="image/*" onchange="calHandleImageUpload(this)" style="font-size:12.5px">
+      <p id="cal-image-status" style="font-size:12px;color:var(--text-muted);margin-top:4px"></p>
+    </div>
     <div class="form-group" style="margin-bottom:12px">
       <label>Participantes internos</label>
       <div style="position:relative">
-        <input id="cal-participant-search" placeholder="Buscar por nombre, cargo o área..." oninput="calSearchDirectory(this.value)">
+        <input id="cal-participant-search" placeholder="Buscar por nombre, cargo o área..." autocomplete="off" oninput="calSearchDirectory(this.value)">
         <div id="cal-dir-results" style="display:none;position:absolute;z-index:10;left:0;right:0;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow-md);margin-top:4px;max-height:180px;overflow-y:auto"></div>
       </div>
       <div id="cal-selected-participants" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${calSelectedParticipantsHtml()}</div>
@@ -2344,7 +2529,7 @@ function calOpenForm(editId) {
     <div class="form-group" style="margin-bottom:12px">
       <label>Participante externo (cliente, postulante, proveedor...)</label>
       <div style="display:flex;gap:8px">
-        <input id="cal-ext-name" placeholder="Nombre" style="flex:1">
+        <input id="cal-ext-name" placeholder="Nombre" autocomplete="off" style="flex:1">
         <select id="cal-ext-kind" style="width:auto">${CAL_EXTERNAL_KINDS.map(([k,l]) => `<option value="${k}">${l}</option>`).join('')}</select>
         <button type="button" class="btn btn-outline" onclick="calAddExternal()"><i class="fas fa-plus"></i></button>
       </div>
@@ -2352,6 +2537,26 @@ function calOpenForm(editId) {
     </div>
     <div id="cal-conflict-banner"></div>
   `;
+}
+
+function calOpenForm(editId) {
+  const editing = editId ? calMeetings.find(m => m.id === editId) : null;
+  if (editId && (!editing || editing.visibility === 'busy_only')) return;
+  calEditingId = editId || null;
+  calConflicts = [];
+  calPendingImage = null;
+  if (editing) {
+    calSelectedParticipants = (editing.participants || []).filter(p => p.participant_type === 'internal')
+      .map(p => ({ user_id: p.user_id, nombre: p.user_name, area: p.user_area }));
+    calExternalParticipants = (editing.participants || []).filter(p => p.participant_type === 'external')
+      .map(p => ({ name: p.external_name, kind: p.external_kind }));
+  } else {
+    calSelectedParticipants = [];
+    calExternalParticipants = [];
+  }
+
+  document.getElementById('cal-modal-kicker').textContent = editing ? 'Editar reunión' : 'Nueva reunión';
+  document.getElementById('cal-modal-body').innerHTML = calFormBodyHtml(editing);
   document.getElementById('cal-save-btn').disabled = false;
   document.getElementById('cal-save-btn').style.display = '';
   document.getElementById('cal-modal').classList.add('open');
@@ -2359,6 +2564,50 @@ function calOpenForm(editId) {
   ['cal-in-date','cal-in-start','cal-in-end'].forEach(id => {
     document.getElementById(id).addEventListener('change', calLiveCheck);
   });
+}
+
+/* Vuelve a pintar solo el cuerpo del modal (p. ej. tras subir o quitar
+   la imagen), sin cerrar y reabrir el modal entero — así no se pierde
+   el resto de lo que ya se había tecleado en el formulario. */
+function calRerenderFormBody() {
+  const editing = calEditingId ? calMeetings.find(m => m.id === calEditingId) : null;
+  document.getElementById('cal-modal-body').innerHTML = calFormBodyHtml(editing);
+  ['cal-in-date','cal-in-start','cal-in-end'].forEach(id => {
+    document.getElementById(id).addEventListener('change', calLiveCheck);
+  });
+}
+
+function calRemoveImage() {
+  calPendingImage = null;
+  calRerenderFormBody();
+}
+
+async function calUploadMeetingImage(file) {
+  const fd = new FormData();
+  fd.append('image', file);
+  const res = await fetch(QS_API_BASE + '/api/calendar/meetings/image', {
+    method: 'POST',
+    headers: qsToken ? { Authorization: 'Bearer ' + qsToken } : {},
+    body: fd,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || ('Error ' + res.status));
+  return data.url;
+}
+
+async function calHandleImageUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const status = document.getElementById('cal-image-status');
+  if (status) status.textContent = 'Subiendo imagen...';
+  try {
+    calPendingImage = await calUploadMeetingImage(file);
+    calRerenderFormBody();
+    toast('success', 'Imagen subida', file.name);
+  } catch (err) {
+    if (status) status.textContent = '';
+    toast('error', 'No se pudo subir la imagen', err.message || 'Error');
+  }
 }
 
 function calCloseForm() { document.getElementById('cal-modal').classList.remove('open'); }
@@ -2485,8 +2734,11 @@ async function calSubmitForm() {
   if (end_time <= start_time) return toast('error', 'Horario inválido', 'La hora de fin debe ser posterior a la de inicio');
   if (!calSelectedParticipants.length && !calExternalParticipants.length) return toast('error', 'Falta información', 'Selecciona al menos un participante');
 
+  const editing = calEditingId ? calMeetings.find(m => m.id === calEditingId) : null;
+  const image_url = calPendingImage !== null ? calPendingImage : (editing?.image_url || null);
+
   const payload = {
-    title, date, start_time, end_time, meeting_type, location, motivo, description,
+    title, date, start_time, end_time, meeting_type, location, motivo, description, image_url,
     participants: calSelectedParticipants.map(p => ({ user_id: p.user_id })),
     external_participants: calExternalParticipants,
   };
@@ -2535,12 +2787,13 @@ function calViewMeeting(id) {
   document.getElementById('cal-modal-kicker').textContent = m.area + ' · ' + m.meeting_date;
   document.getElementById('cal-modal-body').innerHTML = `
     <div style="font-size:13.5px;display:flex;flex-direction:column;gap:8px">
+      ${m.image_url ? `<img src="${calEsc(m.image_url)}" style="width:100%;max-height:220px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">` : ''}
       <p style="font-size:16px;font-weight:700">${calEsc(m.title)}</p>
       <p><strong>Horario:</strong> ${m.start_time.slice(0,5)} — ${m.end_time.slice(0,5)}</p>
       ${m.meeting_type ? `<p><strong>Tipo:</strong> ${calEsc(m.meeting_type)}</p>` : ''}
       ${m.location ? `<p><strong>Ubicación:</strong> ${calEsc(m.location)}</p>` : ''}
       ${m.motivo ? `<p><strong>Motivo:</strong> ${calEsc(m.motivo)}</p>` : ''}
-      ${m.description ? `<p><strong>Descripción:</strong> ${calEsc(m.description)}</p>` : ''}
+      ${m.description ? `<div><strong>Descripción:</strong><p style="margin-top:4px;white-space:pre-wrap">${calEsc(m.description)}</p></div>` : ''}
       <div><strong>Participantes:</strong><ul style="margin:4px 0 0 18px;padding:0">${participantsHtml || '<li>Sin participantes</li>'}</ul></div>
       <p style="color:var(--text-muted)">Programada por ${calEsc(m.created_by_name || '—')}</p>
     </div>`;
