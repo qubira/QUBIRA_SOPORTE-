@@ -2185,6 +2185,7 @@ const CAL_AREAS = [['SOPORTE','Soporte'],['ADG','ADG'],['TI','OTI'],['RRHH','RR.
 const CAL_MEETING_TYPES = ['Revisión de incidencia','Soporte técnico','Coordinación','Capacitación','Reunión con otra área','Otro'];
 const CAL_EXTERNAL_KINDS = [['cliente','Cliente'],['postulante','Postulante'],['proveedor','Proveedor'],['consultor','Consultor'],['otro','Otro']];
 const CAL_STATUS_LABEL = { scheduled:'Programada', confirmed:'Confirmada', in_progress:'En curso', completed:'Finalizada', cancelled:'Cancelada' };
+const CAL_MODALITY_LABEL = { presencial: 'Presencial', virtual: 'Virtual' };
 /* En la vista semana solo se muestran las reuniones propias (ver
    calLoad()), así que colorear por área no sirve para distinguirlas —
    casi siempre serían todas del mismo color. Se colorea por tipo de
@@ -2219,6 +2220,21 @@ let calWeekOffset = 0;      // semanas respecto a la actual, para la vista seman
 
 function calTodayISO() { return new Date().toISOString().slice(0, 10); }
 function calEsc(s) { return escapeHtmlTw(s); }
+/* Ícono clickeable que resume la modalidad de la reunión: en presencial
+   abre la dirección en Google Maps, en virtual abre el link de ingreso
+   tal cual se guardó. Sin ubicación cargada, solo informa la modalidad. */
+function calModalityIconHtml(m) {
+  const isVirtual = m.modality === 'virtual';
+  const iconClass = isVirtual ? 'fa-video' : 'fa-map-marker-alt';
+  const label = CAL_MODALITY_LABEL[m.modality] || 'Presencial';
+  if (!m.location) {
+    return `<span class="badge" style="background:rgba(107,114,128,.14);color:#9ca3af" title="${calEsc(label)}"><i class="fas ${iconClass}"></i> ${label}</span>`;
+  }
+  const href = isVirtual
+    ? (/^https?:\/\//i.test(m.location) ? m.location : 'https://' + m.location)
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.location)}`;
+  return `<a href="${calEsc(href)}" target="_blank" rel="noopener noreferrer" class="badge" style="background:rgba(107,114,128,.14);color:#9ca3af;text-decoration:none;cursor:pointer" title="${calEsc(label + ' · ' + m.location)}" onclick="event.stopPropagation()"><i class="fas ${iconClass}"></i> ${label}</a>`;
+}
 function calFullName(p) { return [p.nombre, p.apellidos].filter(Boolean).join(' '); }
 function calIsPrivileged() { return (qsUser?.nivel_acceso || 0) >= 100; }
 function calIsoDate(d) { return d.toISOString().slice(0, 10); }
@@ -2468,6 +2484,7 @@ function calMeetingCard(m) {
           <strong>${calEsc(m.title)}</strong>
           <span class="badge" style="background:rgba(79,70,229,.12);color:var(--accent)">${calEsc(m.area)}</span>
           <span class="badge" style="background:rgba(16,185,129,.14);color:var(--success)">${statusTxt}</span>
+          ${calModalityIconHtml(m)}
           ${isBusy ? '<span class="badge" style="background:rgba(107,114,128,.14);color:#9ca3af"><i class="fas fa-lock"></i> Privada</span>' : ''}
         </div>
         <p style="font-size:12.5px;color:var(--text-muted);margin-top:4px">${m.start_time.slice(0,5)} — ${m.end_time.slice(0,5)}${m.meeting_type ? ' · ' + calEsc(m.meeting_type) : ''}</p>
@@ -2498,16 +2515,28 @@ function calFormBodyHtml(editing) {
       <div class="form-group"><label>Inicio *</label><input type="time" id="cal-in-start" value="${editing ? editing.start_time.slice(0,5) : ''}"></div>
       <div class="form-group"><label>Fin *</label><input type="time" id="cal-in-end" value="${editing ? editing.end_time.slice(0,5) : ''}"></div>
     </div>
-    <div class="form-group" style="margin-bottom:12px">
-      <label>Tipo de reunión</label>
-      <select id="cal-in-type">
-        <option value="">— Seleccionar —</option>
-        ${CAL_MEETING_TYPES.map(t => `<option value="${t}" ${editing?.meeting_type===t?'selected':''}>${t}</option>`).join('')}
-      </select>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div class="form-group">
+        <label>Tipo de reunión</label>
+        <select id="cal-in-type">
+          <option value="">— Seleccionar —</option>
+          ${CAL_MEETING_TYPES.map(t => `<option value="${t}" ${editing?.meeting_type===t?'selected':''}>${t}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Modalidad</label>
+        <select id="cal-in-modality" onchange="calUpdateLocationField()">
+          <option value="presencial" ${(editing?.modality || 'presencial')==='presencial'?'selected':''}>Presencial</option>
+          <option value="virtual" ${editing?.modality==='virtual'?'selected':''}>Virtual</option>
+        </select>
+      </div>
     </div>
     <div class="form-group" style="margin-bottom:12px"><label>Motivo</label><input id="cal-in-motivo" autocomplete="off" value="${calEsc(editing?.motivo || '')}"></div>
     <div class="form-group" style="margin-bottom:12px"><label>Descripción</label><textarea id="cal-in-description" rows="2">${calEsc(editing?.description || '')}</textarea></div>
-    <div class="form-group" style="margin-bottom:12px"><label>Ubicación</label><input id="cal-in-location" placeholder="Sala de reuniones, dirección, link de videollamada..." autocomplete="off" value="${calEsc(editing?.location || '')}"></div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label id="cal-in-location-label">${(editing?.modality || 'presencial')==='virtual' ? 'Link de la reunión' : 'Dirección'}</label>
+      <input id="cal-in-location" placeholder="${(editing?.modality || 'presencial')==='virtual' ? 'Link de Zoom, Meet, Teams...' : 'Sala de reuniones, dirección...'}" autocomplete="off" value="${calEsc(editing?.location || '')}">
+    </div>
     <div class="form-group" style="margin-bottom:12px">
       <label>Imagen del evento (opcional)</label>
       ${currentImage ? `
@@ -2561,7 +2590,7 @@ function calOpenForm(editId) {
   document.getElementById('cal-save-btn').style.display = '';
   document.getElementById('cal-modal').classList.add('open');
 
-  ['cal-in-date','cal-in-start','cal-in-end'].forEach(id => {
+  ['cal-in-date','cal-in-start','cal-in-end','cal-in-modality'].forEach(id => {
     document.getElementById(id).addEventListener('change', calLiveCheck);
   });
 }
@@ -2572,9 +2601,19 @@ function calOpenForm(editId) {
 function calRerenderFormBody() {
   const editing = calEditingId ? calMeetings.find(m => m.id === calEditingId) : null;
   document.getElementById('cal-modal-body').innerHTML = calFormBodyHtml(editing);
-  ['cal-in-date','cal-in-start','cal-in-end'].forEach(id => {
+  ['cal-in-date','cal-in-start','cal-in-end','cal-in-modality'].forEach(id => {
     document.getElementById(id).addEventListener('change', calLiveCheck);
   });
+}
+
+/* Cambia la etiqueta y el placeholder de Ubicación según la modalidad
+   elegida: Dirección (presencial) o Link de la reunión (virtual). */
+function calUpdateLocationField() {
+  const isVirtual = document.getElementById('cal-in-modality').value === 'virtual';
+  const label = document.getElementById('cal-in-location-label');
+  const input = document.getElementById('cal-in-location');
+  if (label) label.textContent = isVirtual ? 'Link de la reunión' : 'Dirección';
+  if (input) input.placeholder = isVirtual ? 'Link de Zoom, Meet, Teams...' : 'Sala de reuniones, dirección...';
 }
 
 function calRemoveImage() {
@@ -2630,13 +2669,26 @@ function calSelectedExternalsHtml() {
 }
 function calConflictBannerHtml() {
   if (!calConflicts.length) return '';
-  return `
-  <div style="border-radius:8px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35);padding:12px;font-size:13px;color:#f87171;margin-top:4px">
-    <p style="font-weight:700;display:flex;align-items:center;gap:6px"><i class="fas fa-exclamation-triangle"></i> ${calConflicts.length > 1 ? 'Se encontraron ' + calConflicts.length + ' conflictos:' : 'Conflicto de horario'}</p>
-    <ul style="margin:6px 0 0 18px;padding:0">
-      ${calConflicts.map(c => `<li>${calEsc(c.user_name || 'Alguien')} (${calEsc(c.area || '—')}) ya tiene "${calEsc(c.meeting_name)}" de ${c.start_time.slice(0,5)} a ${c.end_time.slice(0,5)} (${c.date}).</li>`).join('')}
-    </ul>
-  </div>`;
+  const hard = calConflicts.filter(c => c.hard);
+  const soft = calConflicts.filter(c => !c.hard);
+  const listItem = c => `<li>${calEsc(c.user_name || 'Alguien')} (${calEsc(c.area || '—')}) ya tiene "${calEsc(c.meeting_name)}" de ${c.start_time.slice(0,5)} a ${c.end_time.slice(0,5)} (${c.date}).</li>`;
+  let html = '';
+  if (hard.length) {
+    html += `
+    <div style="border-radius:8px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35);padding:12px;font-size:13px;color:#f87171;margin-top:4px">
+      <p style="font-weight:700;display:flex;align-items:center;gap:6px"><i class="fas fa-exclamation-triangle"></i> ${hard.length > 1 ? 'Se encontraron ' + hard.length + ' conflictos de horario:' : 'Conflicto de horario'}</p>
+      <ul style="margin:6px 0 0 18px;padding:0">${hard.map(listItem).join('')}</ul>
+    </div>`;
+  }
+  if (soft.length) {
+    html += `
+    <div style="border-radius:8px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.35);padding:12px;font-size:13px;color:#fbbf24;margin-top:4px">
+      <p style="font-weight:700;display:flex;align-items:center;gap:6px"><i class="fas fa-exclamation-triangle"></i> Hay un cruce de horario (modalidad mixta)</p>
+      <ul style="margin:6px 0 0 18px;padding:0">${soft.map(listItem).join('')}</ul>
+      <p style="margin-top:6px">Al ser una presencial y una virtual, igual puedes guardar e inscribir a la persona en ambas.</p>
+    </div>`;
+  }
+  return html;
 }
 
 function calRemoveParticipant(id) {
@@ -2697,6 +2749,7 @@ async function calLiveCheck() {
   const end = document.getElementById('cal-in-end').value;
   const ids = calSelectedParticipants.map(p => p.user_id);
   const saveBtn = document.getElementById('cal-save-btn');
+  const modality = document.getElementById('cal-in-modality')?.value || 'presencial';
 
   if (!date || !start || !end || !ids.length || end <= start) {
     calConflicts = [];
@@ -2709,14 +2762,14 @@ async function calLiveCheck() {
   let conflicts = [];
   try {
     const res = await qsApiFetch('/api/calendar/check-availability', {
-      method: 'POST', body: JSON.stringify({ date, start_time: start, end_time: end, participant_ids: ids, exclude_meeting_id: calEditingId || undefined }),
+      method: 'POST', body: JSON.stringify({ date, start_time: start, end_time: end, participant_ids: ids, exclude_meeting_id: calEditingId || undefined, modality }),
     });
     conflicts = res.conflicts || [];
   } catch { conflicts = []; }
   if (token !== calCheckToken) return;
   calConflicts = conflicts;
   document.getElementById('cal-conflict-banner').innerHTML = calConflictBannerHtml();
-  saveBtn.disabled = calConflicts.length > 0;
+  saveBtn.disabled = calConflicts.some(c => c.hard);
 }
 
 async function calSubmitForm() {
@@ -2725,6 +2778,7 @@ async function calSubmitForm() {
   const start_time = document.getElementById('cal-in-start').value;
   const end_time = document.getElementById('cal-in-end').value;
   const meeting_type = document.getElementById('cal-in-type').value;
+  const modality = document.getElementById('cal-in-modality')?.value || 'presencial';
   const location = document.getElementById('cal-in-location').value.trim();
   const motivo = document.getElementById('cal-in-motivo').value.trim();
   const description = document.getElementById('cal-in-description').value.trim();
@@ -2738,7 +2792,7 @@ async function calSubmitForm() {
   const image_url = calPendingImage !== null ? calPendingImage : (editing?.image_url || null);
 
   const payload = {
-    title, date, start_time, end_time, meeting_type, location, motivo, description, image_url,
+    title, date, start_time, end_time, meeting_type, modality, location, motivo, description, image_url,
     participants: calSelectedParticipants.map(p => ({ user_id: p.user_id })),
     external_participants: calExternalParticipants,
   };
@@ -2791,7 +2845,8 @@ function calViewMeeting(id) {
       <p style="font-size:16px;font-weight:700">${calEsc(m.title)}</p>
       <p><strong>Horario:</strong> ${m.start_time.slice(0,5)} — ${m.end_time.slice(0,5)}</p>
       ${m.meeting_type ? `<p><strong>Tipo:</strong> ${calEsc(m.meeting_type)}</p>` : ''}
-      ${m.location ? `<p><strong>Ubicación:</strong> ${calEsc(m.location)}</p>` : ''}
+      <p>${calModalityIconHtml(m)}</p>
+      ${m.location ? `<p><strong>${m.modality === 'virtual' ? 'Link' : 'Dirección'}:</strong> ${calEsc(m.location)}</p>` : ''}
       ${m.motivo ? `<p><strong>Motivo:</strong> ${calEsc(m.motivo)}</p>` : ''}
       ${m.description ? `<div><strong>Descripción:</strong><p style="margin-top:4px;white-space:pre-wrap">${calEsc(m.description)}</p></div>` : ''}
       <div><strong>Participantes:</strong><ul style="margin:4px 0 0 18px;padding:0">${participantsHtml || '<li>Sin participantes</li>'}</ul></div>
