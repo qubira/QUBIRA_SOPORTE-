@@ -2176,7 +2176,7 @@ function toast(type, title, msg) {
 // no chocar con nombres ya usados en el resto de este archivo.
 // ══════════════════════════════════════════════════════
 const CAL_OWN_AREA = 'SOPORTE';
-const CAL_AREAS = [['SOPORTE','Soporte'],['ADG','ADG'],['TI','TI'],['RRHH','RR. HH.']];
+const CAL_AREAS = [['SOPORTE','Soporte'],['ADG','ADG'],['TI','OTI'],['RRHH','RR. HH.']];
 const CAL_MEETING_TYPES = ['Revisión de incidencia','Soporte técnico','Coordinación','Capacitación','Reunión con otra área','Otro'];
 const CAL_EXTERNAL_KINDS = [['cliente','Cliente'],['postulante','Postulante'],['proveedor','Proveedor'],['consultor','Consultor'],['otro','Otro']];
 const CAL_STATUS_LABEL = { scheduled:'Programada', confirmed:'Confirmada', in_progress:'En curso', completed:'Finalizada', cancelled:'Cancelada' };
@@ -2553,7 +2553,7 @@ function calViewMeeting(id) {
 // (API/src/routes/audit.js). Solo visible para cargos
 // Supervisor/Coordinador/Gerente o nivel_acceso>=100.
 // ══════════════════════════════════════════════════════
-const AUD_AREAS = [['SOPORTE','Soporte'],['ADG','ADG'],['TI','TI'],['RRHH','RR. HH.']];
+const AUD_AREAS = [['SOPORTE','Soporte'],['ADG','ADG'],['TI','OTI'],['RRHH','RR. HH.']];
 const AUD_ACTION_LABEL = { view:'Consultó', create:'Creó', update:'Actualizó', delete:'Eliminó', login:'Inició sesión', logout:'Cerró sesión' };
 const AUD_QUALIFYING_CARGOS = ['SUPERVISOR', 'COORDINADOR', 'GERENTE'];
 
