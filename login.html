@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QUBIRA Soporte | Verificando sesión</title>
+<title>QUBIRA OCOS | Verificando sesión</title>
 <link rel="icon" href="https://raw.githubusercontent.com/qubira/IMAGENES/main/logo2.png" type="image/png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -80,8 +80,9 @@ async function exchangeHandoff(code) {
     const data = await res.json();
     if (!res.ok || !data.ok) { showError(data.error || 'El enlace de acceso venció o ya se usó.'); return; }
 
-    if (!(data.user.authorized_modules || []).includes('SOPORTE')) {
-      showError('Tu cuenta no tiene autorización para Soporte.');
+    const mods = data.user.authorized_modules || [];
+    if (!mods.includes('SOPORTE') && !mods.includes('OCOS') && (data.user.nivel_acceso || 0) < 100) {
+      showError('Tu cuenta no tiene autorización para OCOS (Oficina de Centro de Operaciones y Servicios).');
       return;
     }
 
@@ -102,9 +103,10 @@ async function checkExistingSession() {
     const res = await fetch(`${QS_API_BASE}/api/auth/me`, { headers: { Authorization: 'Bearer ' + existingToken } });
     if (!res.ok) { localStorage.removeItem('qs_token'); localStorage.removeItem('qs_user'); goToCentralLogin(); return; }
     const data = await res.json();
-    if (!(data.user.authorized_modules || []).includes('SOPORTE')) {
+    const mods = data.user.authorized_modules || [];
+    if (!mods.includes('SOPORTE') && !mods.includes('OCOS') && (data.user.nivel_acceso || 0) < 100) {
       localStorage.removeItem('qs_token'); localStorage.removeItem('qs_user');
-      showError('Tu cuenta no tiene autorización para Soporte.');
+      showError('Tu cuenta no tiene autorización para OCOS (Oficina de Centro de Operaciones y Servicios).');
       return;
     }
     localStorage.setItem('qs_user', JSON.stringify(data.user));

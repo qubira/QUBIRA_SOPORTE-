@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>QUBIRA SOPORTE</title>
+  <title>QUBIRA OCOS | Centro de Operaciones y Servicios</title>
   <link rel="icon" href="https://raw.githubusercontent.com/qubira/IMAGENES/main/logo2.png" type="image/png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
@@ -726,7 +726,7 @@
     <img src="https://raw.githubusercontent.com/qubira/IMAGENES/main/logo2.png" alt="Qubira" onerror="this.style.display='none'">
     <div>
       <div class="brand">QUBIRA</div>
-      <div class="sub">SOPORTE TÉCNICO</div>
+      <div class="sub">OCOS · OPERACIONES Y SERVICIOS</div>
     </div>
   </div>
   <nav class="sidebar-nav">
@@ -853,7 +853,7 @@
       <div style="position:sticky;top:64px;z-index:20;background:var(--bg);padding-top:2px;padding-bottom:10px;margin:0 -2px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:2px">
           <div class="cal-tabs">
-            <button type="button" class="cal-tab" id="cal-tab-area" onclick="calSetMode('area')">Calendario — Soporte</button>
+            <button type="button" class="cal-tab" id="cal-tab-area" onclick="calSetMode('area')">Calendario — OCOS</button>
             <button type="button" class="cal-tab" id="cal-tab-mine" onclick="calSetMode('mine')">Mi agenda</button>
             <button type="button" class="cal-tab" id="cal-tab-week" onclick="calSetMode('week')">Vista semana</button>
             <button type="button" class="cal-tab" id="cal-tab-weekarea" onclick="calSetMode('weekArea')">Vista semana general</button>
@@ -1419,7 +1419,8 @@
   if (!token) { window.location.href = 'login.html'; return; }
   try {
     const storedUser = JSON.parse(localStorage.getItem('qs_user') || 'null');
-    if (!(storedUser?.authorized_modules || []).includes('SOPORTE')) {
+    const mods = storedUser?.authorized_modules || [];
+    if (!mods.includes('SOPORTE') && !mods.includes('OCOS') && (storedUser?.nivel_acceso || 0) < 100) {
       localStorage.removeItem('qs_token');
       localStorage.removeItem('qs_user');
       window.location.href = 'login.html';
@@ -1570,11 +1571,11 @@ function fmtShort(iso) {
 // NAVEGACIÓN
 // ══════════════════════════════════════════════════════
 const PAGE_META = {
-  dashboard:    { title:'Dashboard',          sub:'Resumen general del sistema de soporte' },
+  dashboard:    { title:'Dashboard',          sub:'Resumen general del centro de operaciones y servicios' },
   nuevo:        { title:'Nuevo Caso',         sub:'Registra un nuevo reporte de avería'    },
-  calendario:   { title:'Calendario',         sub:'Reuniones de Soporte e interconexión con otras áreas' },
+  calendario:   { title:'Calendario',         sub:'Reuniones de OCOS e interconexión con otras áreas' },
   casos:        { title:'Gestión de Casos',   sub:'Visualiza y administra todos los reportes' },
-  reportes:     { title:'Estadísticas',       sub:'Análisis y métricas del sistema de soporte' },
+  reportes:     { title:'Estadísticas',       sub:'Análisis y métricas del centro de operaciones y servicios' },
   trabajadores: { title:'Trabajadores',       sub:'Consulta las cuentas del equipo y restablece contraseñas' },
   auditoria:    { title:'Auditoría',          sub:'Registro de movimientos del sistema' },
   ip:           { title:'IP',                 sub:'Observación, bloqueo y autorización de direcciones IP' },
@@ -3564,7 +3565,7 @@ function renderSidebarSession() {
   const iniciales = (qsUser.nombre?.[0] || qsUser.username?.[0] || '?').toUpperCase() + (qsUser.apellidos?.[0] || '').toUpperCase();
   avatarEl.textContent = iniciales;
   nameEl.textContent = nombre;
-  roleEl.textContent = `${qsUser.rol || 'Soporte'} · Qubira`;
+  roleEl.textContent = `${qsUser.rol || 'OCOS'} · Qubira`;
 }
 
 function showMasterGate() {
