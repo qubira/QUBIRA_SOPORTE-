@@ -1108,23 +1108,26 @@
         <button class="btn btn-outline btn-sm" onclick="logoutTrabajadores()"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button>
       </div>
 
-      <!-- Gate de contraseña maestra -->
+      <!-- Gate de verificación en dos pasos -->
       <div class="card" id="tw-gate">
         <div style="text-align:center;padding:30px 10px;max-width:360px;margin:0 auto">
           <div style="font-size:38px;margin-bottom:10px"><i class="fas fa-user-shield" style="color:var(--accent)"></i></div>
           <h3 style="margin-bottom:6px">Acceso restringido</h3>
           <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px">
-            Ingresa la contraseña maestra para ver las cuentas de los trabajadores.
-            Solo vas a poder editar la contraseña de cada cuenta.
+            Ingresa el código de 6 dígitos de tu app autenticadora para ver las cuentas de
+            los trabajadores. Solo vas a poder editar la contraseña de cada cuenta.
           </p>
           <div class="form-group" style="text-align:left">
-            <label>Contraseña maestra</label>
-            <input type="password" id="tw-master-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')verifyMasterPassword()">
+            <label>Código de verificación en dos pasos</label>
+            <input type="text" inputmode="numeric" maxlength="6" id="tw-master-input" placeholder="Código de 6 dígitos" style="text-align:center;letter-spacing:.3em;font-weight:700" oninput="this.value=this.value.replace(/\D/g,'').slice(0,6)" onkeydown="if(event.key==='Enter')verifyMasterPassword()">
           </div>
           <div id="tw-gate-error" style="color:var(--danger);font-size:12px;margin-top:8px;display:none"></div>
           <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:16px" onclick="verifyMasterPassword()" id="tw-gate-btn">
             <i class="fas fa-unlock"></i> Desbloquear
           </button>
+          <p style="font-size:11px;color:var(--text-muted);margin-top:14px">
+            ¿No tienes la verificación en dos pasos activada? Actívala desde "Seguridad" en la pantalla de selección de módulo.
+          </p>
         </div>
       </div>
 
@@ -3469,9 +3472,11 @@ const CENTRAL_MODULO_URL = (location.hostname === 'localhost' || location.hostna
 let qsToken   = localStorage.getItem('qs_token') || null;
 let qsUser    = JSON.parse(localStorage.getItem('qs_user') || 'null');
 
-/* La contraseña maestra SOLO vive en memoria de esta pestaña.
-   Si se recarga la página, se pierde y hay que volver a pedirla. */
-let msPassword  = null;
+/* El token de elevación (emitido tras confirmar el código de 2FA
+   propio de la cuenta) SOLO vive en memoria de esta pestaña y vence
+   a los 15 minutos. Si se recarga la página o vence, se pierde y hay
+   que volver a ingresar un código. */
+let msElevationToken = null;
 let msVerified  = false;
 
 let trabajadores      = [];
@@ -3481,7 +3486,7 @@ let pwdTargetId        = null;
 async function qsApiFetch(path, opts = {}) {
   const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
   if (qsToken) headers.Authorization = 'Bearer ' + qsToken;
-  if (opts.withMaster && msPassword) headers['X-Master-Password'] = msPassword;
+  if (opts.withElevation && msElevationToken) headers['X-Elevation-Token'] = msElevationToken;
 
   const res = await fetch(QS_API_BASE + path, { ...opts, headers });
 
@@ -3547,7 +3552,7 @@ async function logout() {
   }
   qsClearSession();
   msVerified = false;
-  msPassword = null;
+  msElevationToken = null;
   window.location.href = 'login.html';
 }
 
@@ -3584,28 +3589,30 @@ function showTrabajadoresContent() {
 
 function lockTrabajadores() {
   msVerified = false;
-  msPassword = null;
+  msElevationToken = null;
   showMasterGate();
 }
 
 function hideEl(id) { const e = document.getElementById(id); if (e) e.style.display = 'none'; }
 function showErr(id, msg) { const e = document.getElementById(id); if (!e) return; e.textContent = msg; e.style.display = 'block'; }
 
-/* ── CONTRASEÑA MAESTRA ── */
+/* ── VERIFICACIÓN EN DOS PASOS (reemplaza la antigua contraseña
+   maestra compartida: ahora es el código de la app autenticadora de
+   la propia cuenta) ── */
 async function verifyMasterPassword() {
-  const password = gv('tw-master-input');
-  if (!password) { showErr('tw-gate-error', 'Ingresa la contraseña maestra.'); return; }
+  const code = gv('tw-master-input');
+  if (!code) { showErr('tw-gate-error', 'Ingresa el código de 6 dígitos.'); return; }
 
   const btn = document.getElementById('tw-gate-btn');
   btn.disabled = true;
   hideEl('tw-gate-error');
 
   try {
-    await qsApiFetch('/api/soporte/master-password/verify', {
+    const data = await qsApiFetch('/api/soporte/elevate', {
       method: 'POST',
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ code }),
     });
-    msPassword = password;
+    msElevationToken = data.token;
     msVerified = true;
     showTrabajadoresContent();
   } catch (err) {
@@ -3613,7 +3620,7 @@ async function verifyMasterPassword() {
       toast('error', 'Sesión expirada', 'Vuelve a iniciar sesión.');
       goToLogin('trabajadores');
     } else {
-      showErr('tw-gate-error', err.message || 'Contraseña maestra incorrecta.');
+      showErr('tw-gate-error', err.message || 'Código inválido.');
     }
   } finally {
     btn.disabled = false;
@@ -3626,7 +3633,7 @@ async function loadTrabajadores() {
   body.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)">Cargando…</div>';
 
   try {
-    const data = await qsApiFetch('/api/soporte/trabajadores', { withMaster: true });
+    const data = await qsApiFetch('/api/soporte/trabajadores', { withElevation: true });
     trabajadores = data.trabajadores || [];
     renderTrabajadores();
   } catch (err) {
@@ -3634,11 +3641,11 @@ async function loadTrabajadores() {
       goToLogin('trabajadores');
       return;
     }
-    /* la contraseña maestra pudo haber quedado obsoleta */
+    /* el token de elevación pudo haber vencido (dura 15 min) */
     msVerified = false;
-    msPassword = null;
+    msElevationToken = null;
     showMasterGate();
-    showErr('tw-gate-error', err.message || 'No se pudo verificar la contraseña maestra.');
+    showErr('tw-gate-error', err.message || 'Tu verificación venció, ingresa el código de nuevo.');
   }
 }
 
@@ -3713,7 +3720,7 @@ async function savePassword() {
   try {
     const data = await qsApiFetch(`/api/soporte/trabajadores/${pwdTargetId}/password`, {
       method: 'PATCH',
-      withMaster: true,
+      withElevation: true,
       body: JSON.stringify({ nueva_password: nueva }),
     });
     toast('success', 'Contraseña actualizada', data.message || 'Listo.');
