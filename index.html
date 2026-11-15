@@ -1586,6 +1586,7 @@ const PAGE_META = {
 };
 
 function navigate(page, filter) {
+  if (window.__seccionPrevia !== page) { window.__seccionPrevia = page; window.scrollTo(0, 0); document.querySelectorAll('main, .main, .content, .main-content').forEach(e => { if (e.scrollTop) e.scrollTop = 0; }); } // nueva sección → arriba
   if (filter !== undefined) activeFilter = filter;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
