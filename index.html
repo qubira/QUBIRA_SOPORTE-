@@ -2894,6 +2894,8 @@ function audIsPrivileged() { return (qsUser?.nivel_acceso || 0) >= 100; }
 function audCanView() {
   if (!qsUser) return false;
   if (audIsPrivileged()) return true;
+  // Por nivel jerárquico: N1 a N5 (Supervisor o superior)
+  if (qsUser.nivel_cargo) return qsUser.nivel_cargo <= 5;
   return AUD_QUALIFYING_CARGOS.includes(String(qsUser.cargo || '').toUpperCase());
 }
 
