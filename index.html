@@ -820,6 +820,7 @@
   </header>
 
   <div class="content">
+    <div id="aviso-casos-locales" style="display:none;margin:0 0 16px;padding:12px 16px;border-radius:10px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);font-size:13px;align-items:center;gap:12px;flex-wrap:wrap"></div>
 
     <!-- ═══════════════ DASHBOARD ═══════════════ -->
     <div class="page active" id="page-dashboard">
@@ -1551,17 +1552,80 @@ const PRIO_COLOR = {
 // ══════════════════════════════════════════════════════
 // ESTADO GLOBAL
 // ══════════════════════════════════════════════════════
-let cases       = JSON.parse(localStorage.getItem('qb_cases') || '[]');
+/* Los casos viven en el servidor con su código OCOS-CAS-AAAA-NNN (CODIFICACION.md).
+   Lo guardado antes en este navegador (qb_cases, QS-…) se sube con «Enviar mis casos». */
+let cases       = [];
 let selTipo     = null;
 let selPrio     = null;
 let uploadedFiles = [];
 let activeCaseId  = null;
 let activeFilter  = '';
 
-function save() { localStorage.setItem('qb_cases', JSON.stringify(cases)); }
+let _sync = {}; // código → copia guardada en el servidor
+const marcarSync = lista => lista.forEach(c => { _sync[c.id] = JSON.stringify(c); });
+// Guarda en el servidor los casos que cambiaron (estado, respuesta, asignación…)
+function save() {
+  for (const c of cases) {
+    const j = JSON.stringify(c);
+    if (_sync[c.id] === j) continue;
+    _sync[c.id] = j;
+    qsApiFetch(`/api/soporte/casos/${encodeURIComponent(c.id)}`, { method: 'PUT', body: j })
+      .catch(err => { delete _sync[c.id]; if (err.message !== 'SESSION_EXPIRED') toast('error', 'No se guardó en el servidor', err.message); });
+  }
+}
 
-function genId() {
-  return 'QS-' + String(cases.length + 1).padStart(4, '0');
+// Casos de demostración que se cargaban en la primera visita: no son reales y no se envían
+const CASOS_DEMO = ['Certificados SSL vencidos', 'Cierres inesperados (Crashes)', 'Fugas de RAM (consumo continuo)', 'Orquestación fallida (Docker / Kubernetes)'];
+const esDemo = c => /^QS-000[1-4]$/.test(c.id || '') && CASOS_DEMO.includes(c.tipoCaso);
+function casosLocalesPendientes() {
+  try { return (JSON.parse(localStorage.getItem('qb_cases') || '[]') || []).filter(c => c && !esDemo(c)); } catch { return []; }
+}
+function pintarAvisoLocales() {
+  const el = document.getElementById('aviso-casos-locales');
+  if (!el) return;
+  const n = casosLocalesPendientes().length;
+  if (!n) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  el.innerHTML = `<i class="fas fa-triangle-exclamation" style="color:#f59e0b"></i>
+    <span style="flex:1">Tienes <b>${n}</b> caso${n === 1 ? '' : 's'} guardado${n === 1 ? '' : 's'} solo en este navegador (códigos QS-…). Envíalos para que reciban su código OCOS-CAS y todo el equipo los vea.</span>
+    <button class="btn btn-primary" id="btn-enviar-locales"><i class="fas fa-cloud-arrow-up"></i> Enviar mis casos al sistema central</button>`;
+  document.getElementById('btn-enviar-locales').addEventListener('click', enviarCasosLocales);
+}
+async function enviarCasosLocales() {
+  const locales = casosLocalesPendientes();
+  if (!locales.length) return;
+  const btn = document.getElementById('btn-enviar-locales');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando…'; }
+  let ok = 0;
+  const enviados = new Set();
+  try {
+    // De uno en uno (cada caso puede llevar capturas); el servidor numera en orden de llegada y no duplica
+    for (const c of locales.slice().sort((a, b) => String(a.fechaCreacion || '').localeCompare(String(b.fechaCreacion || '')))) {
+      const r = await qsApiFetch('/api/soporte/casos/enviar', { method: 'POST', body: JSON.stringify({ casos: [c] }) });
+      (r.enviados || []).forEach(e => { enviados.add(e.local); ok++; });
+    }
+  } catch (err) {
+    if (err.message !== 'SESSION_EXPIRED') toast('error', 'Envío incompleto', err.message);
+  }
+  // Lo enviado sale de este navegador (ya está en el servidor); lo demás queda para reintentar
+  try {
+    const quedan = (JSON.parse(localStorage.getItem('qb_cases') || '[]') || []).filter(c => !esDemo(c) && !enviados.has(c.id));
+    if (quedan.length) localStorage.setItem('qb_cases', JSON.stringify(quedan)); else localStorage.removeItem('qb_cases');
+  } catch (e) {}
+  if (ok) toast('success', 'Casos enviados', `${ok} caso${ok === 1 ? '' : 's'} recibieron su código OCOS-CAS.`);
+  await cargarCasosCentrales();
+}
+async function cargarCasosCentrales() {
+  try {
+    const r = await qsApiFetch('/api/soporte/casos');
+    cases = r.casos || [];
+    _sync = {}; marcarSync(cases);
+  } catch (err) {
+    if (err.message !== 'SESSION_EXPIRED') toast('error', 'No se pudieron leer los casos', err.message);
+  }
+  pintarAvisoLocales();
+  updateNavBadges();
+  if (document.getElementById('page-casos')?.classList.contains('active')) renderCases(); else renderDashboard();
 }
 
 function fmtDate(iso) {
@@ -1755,9 +1819,8 @@ function pmi(l, v) {
 // ══════════════════════════════════════════════════════
 // SUBMIT
 // ══════════════════════════════════════════════════════
-function submitCase() {
+async function submitCase() {
   const nc = {
-    id:           genId(),
     tipo:         selTipo,
     tipoCaso:     gv('f-tipo-caso'),
     proyecto:     gv('f-proyecto'),
@@ -1782,11 +1845,15 @@ function submitCase() {
     fechaActualizacion: new Date().toISOString(),
     historial: [{ fecha: new Date().toISOString(), accion: 'Caso creado', autor: gv('f-nombre') }]
   };
-  cases.unshift(nc);
-  save();
-  updateNavBadges();
-  toast('success', '¡Caso registrado!', `ID: ${nc.id} — Prioridad ${nc.prioridad}`);
-  navigate('casos', '');
+  try {
+    const r = await qsApiFetch('/api/soporte/casos', { method: 'POST', body: JSON.stringify(nc) });
+    cases.unshift(r.caso); marcarSync([r.caso]);
+    updateNavBadges();
+    toast('success', '¡Caso registrado!', `Código: ${r.caso.id} — Prioridad ${r.caso.prioridad || ''}`);
+    navigate('casos', '');
+  } catch (err) {
+    if (err.message !== 'SESSION_EXPIRED') toast('error', 'No se pudo registrar el caso', err.message);
+  }
 }
 
 function resetForm() {
@@ -3842,9 +3909,9 @@ function seedDemo() {
 // ══════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════
-if (cases.length === 0) seedDemo();
 updateNavBadges();
 renderDashboard();
+cargarCasosCentrales();
 renderSidebarSession();
 document.getElementById('sf-logout-btn')?.addEventListener('click', logout);
 document.getElementById('sf-switch-btn')?.addEventListener('click', () => { window.location.href = CENTRAL_MODULO_URL; });
