@@ -717,6 +717,7 @@
     .report-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
     @media(max-width:768px){ .report-grid{grid-template-columns:1fr;} }
   </style>
+  <script src="https://api-qubira.onrender.com/api/public/areas.js" defer></script>
 </head>
 <body>
 
@@ -2187,6 +2188,8 @@ function toast(type, title, msg) {
 // ══════════════════════════════════════════════════════
 const CAL_OWN_AREA = 'SOPORTE';
 const CAL_AREAS = [['SOPORTE','Soporte'],['ADG','ADG'],['TI','OTI'],['RRHH','ORH']];
+// Áreas desde el catálogo de ORH (fuente única); esta lista queda solo como respaldo
+(window.__qbListasAreas ||= []).push([CAL_AREAS, 'SOPORTE']);
 const CAL_MEETING_TYPES = ['Revisión de incidencia','Soporte técnico','Coordinación','Capacitación','Reunión con otra área','Otro'];
 const CAL_EXTERNAL_KINDS = [['cliente','Cliente'],['postulante','Postulante'],['proveedor','Proveedor'],['consultor','Consultor'],['otro','Otro']];
 const CAL_STATUS_LABEL = { scheduled:'Programada', confirmed:'Confirmada', in_progress:'En curso', completed:'Finalizada', cancelled:'Cancelada' };
@@ -2867,6 +2870,8 @@ function calViewMeeting(id) {
 // Supervisor/Coordinador/Gerente o nivel_acceso>=100.
 // ══════════════════════════════════════════════════════
 const AUD_AREAS = [['SOPORTE','Soporte'],['ADG','ADG'],['TI','OTI'],['RRHH','ORH']];
+// Áreas desde el catálogo de ORH (fuente única); esta lista queda solo como respaldo
+(window.__qbListasAreas ||= []).push([AUD_AREAS, 'SOPORTE']);
 const AUD_ACTION_LABEL = { view:'Consultó', create:'Creó', update:'Actualizó', delete:'Eliminó', login:'Inició sesión', logout:'Cerró sesión' };
 const AUD_QUALIFYING_CARGOS = ['SUPERVISOR', 'COORDINADOR', 'GERENTE'];
 
