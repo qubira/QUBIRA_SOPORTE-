@@ -718,6 +718,7 @@
     @media(max-width:768px){ .report-grid{grid-template-columns:1fr;} }
   </style>
   <script src="https://api-qubira.onrender.com/api/public/areas.js" defer></script>
+  <script src="https://api-qubira.onrender.com/api/public/flujo-proyecto.js?v=20261120" defer></script>
 </head>
 <body>
 
@@ -740,6 +741,9 @@
     </div>
     <div class="nav-item" data-page="calendario" data-filter="" onclick="navigate('calendario')">
       <i class="fas fa-calendar-alt fa-fw"></i> Calendario
+    </div>
+    <div class="nav-item" data-page="flujo" data-filter="" onclick="navigate('flujo')">
+      <i class="fas fa-route fa-fw"></i> Flujo de proyectos
     </div>
     <div class="nav-section">Gestión</div>
     <div class="nav-item" data-page="casos" data-filter="" onclick="navigate('casos','')">
@@ -851,6 +855,8 @@
     </div>
 
     <!-- ═══════════════ CALENDARIO ═══════════════ -->
+    <div class="page" id="page-flujo"><div class="card" style="padding:20px"><div id="flujo-proyectos"></div></div></div>
+
     <div class="page" id="page-calendario">
       <div style="position:sticky;top:64px;z-index:20;background:var(--bg);padding-top:2px;padding-bottom:10px;margin:0 -2px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:2px">
@@ -1642,6 +1648,7 @@ const PAGE_META = {
   dashboard:    { title:'Dashboard',          sub:'Resumen general del centro de operaciones y servicios' },
   nuevo:        { title:'Nuevo Caso',         sub:'Registra un nuevo reporte de avería'    },
   calendario:   { title:'Calendario',         sub:'Reuniones de OCOS e interconexión con otras áreas' },
+  flujo:        { title:'Flujo de proyectos', sub:'Entrega de proyectos con acta de conformidad y postventa' },
   casos:        { title:'Gestión de Casos',   sub:'Visualiza y administra todos los reportes' },
   reportes:     { title:'Estadísticas',       sub:'Análisis y métricas del centro de operaciones y servicios' },
   trabajadores: { title:'Trabajadores',       sub:'Consulta las cuentas del equipo y restablece contraseñas' },
@@ -1649,6 +1656,15 @@ const PAGE_META = {
   ip:           { title:'IP',                 sub:'Observación, bloqueo y autorización de direcciones IP' },
   visitas:      { title:'Visitas',            sub:'Cómo interactúan los visitantes con el sitio público de QUBIRA' }
 };
+
+/* Flujo de proyectos: OCOS registra la entrega con el acta de conformidad */
+function montarFlujoOCOS() {
+  const c = document.getElementById('flujo-proyectos');
+  const dibujar = () => window.qbFlujo.lista(c, { token: () => localStorage.getItem('qs_token') });
+  if (window.qbFlujo) return dibujar();
+  c.textContent = 'Cargando el flujo de proyectos…';
+  document.addEventListener('qb-flujo-listo', dibujar, { once: true });
+}
 
 function navigate(page, filter) {
   if (window.__seccionPrevia !== page) { window.__seccionPrevia = page; window.scrollTo(0, 0); document.querySelectorAll('main, .main, .content, .main-content').forEach(e => { if (e.scrollTop) e.scrollTop = 0; }); } // nueva sección → arriba
@@ -1663,6 +1679,7 @@ function navigate(page, filter) {
   if (page === 'nuevo')     resetForm();
   if (page === 'reportes')  renderReportes();
   if (page === 'calendario') calRender();
+  if (page === 'flujo') montarFlujoOCOS();
   if (page === 'auditoria') audRender();
   if (page === 'ip') ipRender();
   if (page === 'visitas') visRender();
