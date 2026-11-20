@@ -1956,6 +1956,32 @@ function clearFilters() {
 // ══════════════════════════════════════════════════════
 // MODAL DETALLE
 // ══════════════════════════════════════════════════════
+/* Niveles de soporte: escalar e incidente de seguridad (el servidor valida quién puede) */
+const qsEsc = s => String(s == null ? '' : s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+function actualizarCasoLocal(caso) {
+  const i = cases.findIndex(x => x.id === caso.id);
+  if (i >= 0) cases[i] = caso; else cases.unshift(caso);
+  _sync[caso.id] = JSON.stringify(caso);
+  openCase(caso.id);
+  if (document.getElementById('page-casos')?.classList.contains('active')) renderCases();
+}
+async function escalarCaso() {
+  const com = (document.getElementById('esc-com')?.value || '').trim();
+  if (!com) { toast('error', 'Falta el detalle', 'Escribe qué se intentó y por qué sube de nivel.'); return; }
+  try {
+    const r = await qsApiFetch(`/api/soporte/casos/${encodeURIComponent(activeCaseId)}/escalar`, { method: 'POST', body: JSON.stringify({ comentario: com }) });
+    actualizarCasoLocal(r.caso); toast('success', 'Caso escalado', r.caso.nivelNombre);
+  } catch (e) { if (e.message !== 'SESSION_EXPIRED') toast('error', 'No se escaló', e.message); }
+}
+async function reportarIncidente() {
+  const com = (document.getElementById('esc-com')?.value || '').trim();
+  if (!com) { toast('error', 'Falta el detalle', 'Describe el incidente: qué pasó y qué se vio comprometido.'); return; }
+  try {
+    const r = await qsApiFetch(`/api/soporte/casos/${encodeURIComponent(activeCaseId)}/seguridad`, { method: 'POST', body: JSON.stringify({ comentario: com, datos_personales: !!document.getElementById('esc-dp')?.checked }) });
+    actualizarCasoLocal(r.caso); toast('success', 'Incidente enviado a DST', r.caso.datosPersonales ? 'También lo verá ODACL (datos personales).' : 'DST lo contiene e informa al Director General.');
+  } catch (e) { if (e.message !== 'SESSION_EXPIRED') toast('error', 'No se envió', e.message); }
+}
+
 function openCase(id) {
   activeCaseId = id;
   const c = cases.find(x => x.id === id);
@@ -1965,7 +1991,7 @@ function openCase(id) {
   const im = { ninguno:'Sin impacto visible', bajo:'Pocos usuarios', medio:'Grupo significativo', alto:'Mayoría de usuarios', total:'Todos / Sistema caído' };
   const en = { desarrollo:'Desarrollo', testing:'Testing / QA', staging:'Staging', produccion:'Producción' };
 
-  document.getElementById('m-id').innerHTML    = `<span class="badge b-${c.tipo}">${t.emoji} ${t.label}</span> &nbsp;${c.id} &nbsp;·&nbsp; ${fmtDate(c.fechaCreacion)}`;
+  document.getElementById('m-id').innerHTML    = `<span class="badge b-${c.tipo}">${t.emoji} ${t.label}</span> &nbsp;${c.id} &nbsp;·&nbsp; ${fmtDate(c.fechaCreacion)} &nbsp;·&nbsp; ${qsEsc(c.nivelNombre || 'OCOS N1')}`;
   document.getElementById('m-title').textContent = c.titulo;
 
   document.getElementById('m-body').innerHTML = `
@@ -2036,6 +2062,28 @@ function openCase(id) {
             <div class="ti-txt">${h.accion}${h.autor ? ` — <strong>${h.autor}</strong>` : ''}</div>
           </div>`).join('')}
       </div>
+    </div>
+
+    <!-- NIVEL DE SOPORTE -->
+    <div class="detail-section">
+      <h4><i class="fas fa-layer-group"></i> Nivel de soporte</h4>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
+        <span class="badge" style="background:#eef2ff;color:#4338ca">${qsEsc(c.nivelNombre || 'OCOS N1 · mesa de ayuda')}</span>
+        ${c.seguridad ? '<span class="badge" style="background:#fee2e2;color:#b91c1c">Incidente de seguridad</span>' : ''}
+        ${c.datosPersonales ? '<span class="badge" style="background:#fee2e2;color:#b91c1c">Datos personales</span>' : ''}
+      </div>
+      ${(c.escalamiento || []).length ? `<div class="timeline" style="margin-bottom:10px">${c.escalamiento.map(h => `
+        <div class="timeline-item"><div class="ti-date">${fmtDate(h.fecha)}</div>
+        <div class="ti-txt"><strong>${qsEsc(h.accion)}</strong> — ${qsEsc(h.usuario || '')}${h.area ? ' (' + qsEsc(h.area) + ')' : ''}${h.de || h.a ? '<br>' + qsEsc(h.de || '') + (h.a ? ' → ' + qsEsc(h.a) : '') : ''}${h.comentario ? '<br>' + qsEsc(h.comentario) : ''}</div></div>`).join('')}</div>` : ''}
+      ${(c.areaActual || 'OCOS') === 'OCOS' && !['solucionado', 'cerrado'].includes(c.estado) ? `
+        <textarea id="esc-com" rows="2" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-family:inherit;background:transparent;color:inherit" placeholder="Qué se intentó y por qué sube de nivel (o qué pasó, si es un incidente de seguridad)"></textarea>
+        <label style="display:flex;gap:6px;align-items:center;font-size:13px;margin:6px 0"><input type="checkbox" id="esc-dp"> El incidente expuso datos personales (avisa a ODACL)</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn btn-primary" onclick="escalarCaso()"><i class="fas fa-arrow-up"></i> ${(c.nivel || 1) < 3 ? 'Escalar a N' + ((c.nivel || 1) + 1) : 'Escalar a OTI (error de fondo)'}</button>
+          <button type="button" class="btn btn-outline" style="color:#b91c1c;border-color:#b91c1c" onclick="reportarIncidente()"><i class="fas fa-shield-halved"></i> Incidente de seguridad → DST</button>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:6px">El caso sube en orden: N1 → N2 → N3 → OTI. A OTI lo escala el Especialista de Soporte Nivel 3. Un incidente de seguridad va directo a DST desde cualquier nivel.</p>`
+      : (c.areaActual && c.areaActual !== 'OCOS' ? `<p style="font-size:13px">El caso está en <strong>${qsEsc(c.areaActual)}</strong>. Vuelve a OCOS N3 cuando lo atiendan.</p>` : '')}
     </div>
 
     <!-- ESTADO -->
